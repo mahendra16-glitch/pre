@@ -2,11 +2,12 @@ name: Build iOS IPA
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build-ios:
+    name: Build iOS App (.ipa)
     runs-on: macos-latest
 
     steps:
@@ -19,33 +20,36 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Flutter SDK
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.27.4'
           channel: 'stable'
           cache: true
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
-          flutter clean
-          flutter pub upgrade font_awesome_flutter
           flutter pub get
-
-      - name: Setup CocoaPods
-        run: |
           cd ios
-          pod install --repo-update
+          pod install
           cd ..
 
-      - name: Build iOS IPA (Unsigned / No Codesign)
-        run: flutter build ipa --no-codesign
+      - name: Build Unsigned IPA
+        run: |
+          flutter build ipa --release --no-codesign
+          mkdir -p "$GITHUB_WORKSPACE/build/ios/ipa"
+          if [ -d "$GITHUB_WORKSPACE/build/ios/archive/Runner.xcarchive/Products/Applications" ]; then
+            cd "$GITHUB_WORKSPACE/build/ios/archive/Runner.xcarchive/Products/Applications"
+            mkdir -p Payload
+            cp -r Runner.app Payload/
+            zip -r "$GITHUB_WORKSPACE/build/ios/ipa/mygenie_restaurant_Unsigned.ipa" Payload
+          fi
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-ipa-unsigned
+          name: mygenie_restaurant_iOS_IPA
           path: |
-            build/ios/archive/Runner.xcarchive
             build/ios/ipa/*.ipa
-          if-no-files-found: warn
+            build/ios/archive/Runner.xcarchive
+          retention-days: 7
