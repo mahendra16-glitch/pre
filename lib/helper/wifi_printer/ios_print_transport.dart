@@ -44,6 +44,17 @@ class IosPrintTransport {
 
   static bool get _nativeBleEnabled => useNativeBle && Platform.isIOS;
 
+  static bool get _isIOS {
+    try {
+      return Platform.isIOS;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static final RegExp _iosBluetoothId = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+
   static Future<bool> connect({
     required String macPrinterAddress,
     NetworkPrinterTarget? wifiPrinter,
@@ -66,6 +77,19 @@ class IosPrintTransport {
             'Could not connect to ${wifiPrinter.label} (${wifiPrinter.key})');
         return false;
       }
+    }
+
+    // On iOS a Bluetooth printer is identified by a UUID, not a MAC address.
+    // print_bluetooth_thermal force-unwraps UUID(uuidString:) and crashes the
+    // app if given anything else (e.g. "01:01:01:01:01:01" saved on Android),
+    // so fail the print with a clear message instead.
+    if (_isIOS && !_iosBluetoothId.hasMatch(macPrinterAddress.trim())) {
+      _route = IosPrintRoute.existingBluetooth;
+      _report(
+          ArgumentError.value(macPrinterAddress, 'macPrinterAddress',
+              'not an iOS Bluetooth printer id'),
+          'Printer not set up for this iPhone/iPad. Open Edit Printer, tap Scan and select the printer.');
+      return false;
     }
 
     if (_nativeBleEnabled) {

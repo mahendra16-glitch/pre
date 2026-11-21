@@ -9,6 +9,7 @@ import 'package:get/get.dart';
 import 'package:mygenie_restaurant/helper/colors.dart';
 import 'package:mygenie_restaurant/util/styles.dart';
 import 'package:mygenie_restaurant/view/base/custom_snackbar.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 
 class PrinterDiscoveryScreen extends StatefulWidget {
   final String printerType; // bluetooth, usb, wifi/lan
@@ -49,12 +50,71 @@ class _PrinterDiscoveryScreenState extends State<PrinterDiscoveryScreen> {
     }
   }
 
+  /// On iPhone/iPad, Bluetooth scanning through flutter_pos_printer_platform
+  /// crashes the app: its closed-source GSDK library creates a
+  /// CBCentralManager with a state-restoration key, which iOS only allows when
+  /// the "bluetooth-central" background mode is declared. So on iOS the
+  /// Bluetooth scan / connect / test print use print_bluetooth_thermal, the
+  /// same package the app already prints with on iOS. Android, Windows, USB
+  /// and Wi-Fi are unchanged.
+  bool get _useIosBluetooth =>
+      Platform.isIOS && widget.printerType == 'bluetooth';
+
+  static final RegExp _uuidPattern = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+
   @override
   void initState() {
     super.initState();
     _portController.text = _port;
-    _initializeListeners();
+    if (!_useIosBluetooth) _initializeListeners();
     _startScan();
+  }
+
+  Future<void> _startIosBluetoothScan() async {
+    setState(() {
+      _isScanning = true;
+      devices.clear();
+    });
+    try {
+      // The first call creates the Bluetooth manager; its state is not known
+      // yet, so a scan started right away would return nothing.
+      final enabled = await PrintBluetoothThermal.bluetoothEnabled;
+      if (!enabled) {
+        await Future.delayed(const Duration(milliseconds: 700));
+        if (!await PrintBluetoothThermal.bluetoothEnabled) {
+          if (mounted) {
+            showCustomSnackBar(
+                'Bluetooth is off or not allowed. Turn it on and allow Bluetooth for this app in Settings.',
+                isError: true);
+          }
+          return;
+        }
+      }
+      final found = await PrintBluetoothThermal.pairedBluetooths;
+      if (!mounted) return;
+      setState(() {
+        for (final d in found) {
+          if (d.macAdress.isEmpty ||
+              devices.any((e) => e.address == d.macAdress)) continue;
+          log('Discovered device: ${d.name}  Address: ${d.macAdress}');
+          devices.add(DiscoveredPrinter(
+            deviceName: d.name,
+            address: d.macAdress,
+            isBle: true,
+            typePrinter: PrinterType.bluetooth,
+          ));
+        }
+      });
+    } catch (e) {
+      if (mounted) showCustomSnackBar('Error scanning: $e', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+        });
+      }
+    }
   }
 
   void _initializeListeners() {
@@ -71,6 +131,10 @@ class _PrinterDiscoveryScreenState extends State<PrinterDiscoveryScreen> {
   }
 
   void _startScan() {
+    if (_useIosBluetooth) {
+      _startIosBluetoothScan();
+      return;
+    }
     setState(() {
       _isScanning = true;
       devices.clear();
@@ -131,6 +195,46 @@ class _PrinterDiscoveryScreenState extends State<PrinterDiscoveryScreen> {
     setState(() {
       _connectingPrinterId = printer.deviceName;
     });
+
+    if (_useIosBluetooth) {
+      try {
+        final address = printer.address ?? '';
+        // print_bluetooth_thermal crashes on iOS if the id is not a UUID.
+        if (!_uuidPattern.hasMatch(address)) {
+          showCustomSnackBar('Invalid Bluetooth printer id: $address',
+              isError: true);
+          return;
+        }
+        if (_connectedPrinter != null) {
+          await PrintBluetoothThermal.disconnect;
+        }
+        final ok =
+            await PrintBluetoothThermal.connect(macPrinterAddress: address);
+        if (!mounted) return;
+        if (ok) {
+          setState(() {
+            _connectedPrinter = printer;
+          });
+          showCustomSnackBar('Connected to ${printer.deviceName}',
+              isError: false);
+        } else {
+          setState(() {
+            _connectedPrinter = null;
+          });
+          showCustomSnackBar('Connection failed', isError: true);
+        }
+      } catch (e) {
+        log('Connection error: $e');
+        showCustomSnackBar('Connection failed: $e', isError: true);
+      } finally {
+        if (mounted) {
+          setState(() {
+            _connectingPrinterId = null;
+          });
+        }
+      }
+      return;
+    }
 
     try {
       // Disconnect from current printer if any
@@ -196,7 +300,11 @@ class _PrinterDiscoveryScreenState extends State<PrinterDiscoveryScreen> {
     if (_connectedPrinter == null) return;
 
     try {
-      await printerManager.disconnect(type: _connectedPrinter!.typePrinter);
+      if (_useIosBluetooth) {
+        await PrintBluetoothThermal.disconnect;
+      } else {
+        await printerManager.disconnect(type: _connectedPrinter!.typePrinter);
+      }
       final printerName = _connectedPrinter!.deviceName;
       setState(() {
         _connectedPrinter = null;
@@ -285,7 +393,13 @@ class _PrinterDiscoveryScreenState extends State<PrinterDiscoveryScreen> {
       bytes += generator.cut();
 
       // Send to printer
-      await printerManager.send(type: printer.typePrinter, bytes: bytes);
+      if (_useIosBluetooth) {
+        if (!await PrintBluetoothThermal.writeBytes(bytes)) {
+          throw Exception('printer did not accept the data');
+        }
+      } else {
+        await printerManager.send(type: printer.typePrinter, bytes: bytes);
+      }
 
       showCustomSnackBar('Test print successful!', isError: false);
     } catch (e) {
@@ -307,7 +421,11 @@ class _PrinterDiscoveryScreenState extends State<PrinterDiscoveryScreen> {
     _ipController.dispose();
     // Disconnect printer when leaving screen
     if (_connectedPrinter != null) {
-      printerManager.disconnect(type: _connectedPrinter!.typePrinter);
+      if (_useIosBluetooth) {
+        PrintBluetoothThermal.disconnect;
+      } else {
+        printerManager.disconnect(type: _connectedPrinter!.typePrinter);
+      }
     }
     super.dispose();
   }
@@ -572,7 +690,7 @@ class _PrinterDiscoveryScreenState extends State<PrinterDiscoveryScreen> {
                       final isConnecting =
                           _connectingPrinterId == printer.deviceName;
 
-                      return Container(
+                      final card = Container(
                         margin: EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
                           color: ColorTheme.whiteColor,
@@ -836,6 +954,15 @@ class _PrinterDiscoveryScreenState extends State<PrinterDiscoveryScreen> {
                             ],
                           ),
                         ),
+                      );
+
+                      // Bluetooth: tapping a scanned printer fills its
+                      // address into the form (same as "Copy to form").
+                      if (widget.printerType != 'bluetooth') return card;
+                      return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _copyAndReturn(printer),
+                        child: card,
                       );
                     },
                   ),
