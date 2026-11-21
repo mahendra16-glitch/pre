@@ -974,106 +974,97 @@ class _ViewBillingPaidOrdersState extends State<ViewBillingPaidOrders> {
 
   /// print ticket
   Future _kdsPrintEscPos(List<int> bytes, Generator generator) async {
-    BluetoothPrinter bluetoothPrinter = BluetoothPrinter(
-        address: Get.find<AuthController>().profileModel!.billPrinterIp!,
-        deviceName: Get.find<AuthController>().profileModel!.billPrinterName!);
-    await printerManager.connect(
-      type: bluetoothPrinter.typePrinter,
-      model: BluetoothPrinterInput(
-        name: bluetoothPrinter.deviceName,
-        address: bluetoothPrinter.address!,
-      ),
-    );
-    switch (bluetoothPrinter.typePrinter) {
-      case PrinterType.usb:
-        bytes += generator.feed(2);
-        await printerManager.connect(
-          type: bluetoothPrinter.typePrinter,
-          model: UsbPrinterInput(
-            name: bluetoothPrinter.deviceName,
-            productId: bluetoothPrinter.productId,
-            vendorId: bluetoothPrinter.vendorId,
-          ),
-        );
-        break;
-      case PrinterType.bluetooth:
-        await printerManager.connect(
-          type: bluetoothPrinter.typePrinter,
-          model: BluetoothPrinterInput(
-            name: bluetoothPrinter.deviceName,
-            address: bluetoothPrinter.address!,
-            isBle: bluetoothPrinter.isBle,
-          ),
-        );
-        pendingTask = null;
-        if (Platform.isIOS || Platform.isAndroid) pendingTask = bytes;
-        break;
-      case PrinterType.network:
-        bytes += generator.feed(2);
-        await printerManager.connect(
-          type: bluetoothPrinter.typePrinter,
-          model: TcpPrinterInput(ipAddress: bluetoothPrinter.address!),
-        );
-        break;
-      // default: (removed as all cases are covered)
-    }
-    if (bluetoothPrinter.typePrinter == PrinterType.bluetooth) {
-      try {
-        await printerManager.send(
-            type: bluetoothPrinter.typePrinter, bytes: bytes);
-        pendingTask = null;
-        Future.delayed(const Duration(seconds: 11), () async {
-          Get.find<LoadingController>().startLoading(false);
-          await Get.find<LoadingController>()
-              .changeText(data: 'Successfully printed!!');
+    try {
+      final profile = Get.isRegistered<AuthController>()
+          ? Get.find<AuthController>().profileModel
+          : null;
+      if (profile == null) return;
+
+      final billType = (profile.billPrinterType ?? '').toLowerCase();
+      final isWifi = billType == 'wifi' ||
+          billType == 'network' ||
+          ((profile.billWifiIp ?? '').isNotEmpty &&
+              billType != 'bluetooth' &&
+              billType != 'usb');
+      final isUsb = billType == 'usb';
+
+      BluetoothPrinter bluetoothPrinter;
+      if (isUsb) {
+        bluetoothPrinter = BluetoothPrinter(
+            productId: profile.billProductId,
+            vendorId: profile.billVendorId,
+            typePrinter: PrinterType.usb);
+      } else if (isWifi) {
+        bluetoothPrinter = BluetoothPrinter(
+            typePrinter: PrinterType.network,
+            port: '9100',
+            address: (profile.billWifiIp ?? '').isNotEmpty
+                ? profile.billWifiIp!
+                : (profile.billPrinterIp ?? ''),
+            deviceName: profile.billPrinterName);
+      } else {
+        bluetoothPrinter = BluetoothPrinter(
+            typePrinter: PrinterType.bluetooth,
+            address: (profile.macBillPrinterIp ?? '').isNotEmpty
+                ? profile.macBillPrinterIp!
+                : (profile.billPrinterIp ?? ''),
+            deviceName: profile.billPrinterName);
+      }
+
+      await printerManager.connect(
+        type: bluetoothPrinter.typePrinter,
+        model: bluetoothPrinter.typePrinter == PrinterType.usb
+            ? UsbPrinterInput(
+                name: bluetoothPrinter.deviceName,
+                productId: bluetoothPrinter.productId,
+                vendorId: bluetoothPrinter.vendorId,
+              )
+            : bluetoothPrinter.typePrinter == PrinterType.network
+                ? TcpPrinterInput(ipAddress: bluetoothPrinter.address ?? '')
+                : BluetoothPrinterInput(
+                    name: bluetoothPrinter.deviceName,
+                    address: bluetoothPrinter.address ?? '',
+                  ),
+      );
+
+      await printerManager.send(
+          type: bluetoothPrinter.typePrinter, bytes: bytes);
+      pendingTask = null;
+      Future.delayed(const Duration(seconds: 11), () async {
+        try {
+          if (Get.isRegistered<LoadingController>()) {
+            Get.find<LoadingController>().startLoading(false);
+            await Get.find<LoadingController>()
+                .changeText(data: 'Successfully printed!!');
+            await Get.find<LoadingController>().changeStatus(data: true);
+          }
+          await PrinterManager.instance
+              .disconnect(type: bluetoothPrinter.typePrinter);
+        } catch (_) {}
+      });
+    } catch (e) {
+      if (Get.isRegistered<LoadingController>()) {
+        try {
+          await Get.find<LoadingController>().changeText(
+              data: 'Printing error occurred: $e', error: true);
           await Get.find<LoadingController>().changeStatus(data: true);
-          await PrinterManager.instance.disconnect(type: PrinterType.bluetooth);
-        });
-      } catch (e) {}
-    } else {
-      printerManager.send(type: bluetoothPrinter.typePrinter, bytes: bytes);
+        } catch (_) {}
+      }
     }
   }
-
-  // Future _iosPrintEscPos(List<int> bytes, Generator generator) async {
-  //   bytes += generator.feed(2);
-  //   await PrintBluetoothThermal.pairedBluetooths;
-
-  //   final bool result = await PrintBluetoothThermal.connect(
-  //       macPrinterAddress:
-  //           Get.find<AuthController>().profileModel!.macBillPrinterIp!);
-
-  //   Future.delayed(const Duration(seconds: 3), () async {
-  //     if (result) {
-  //       await PrintBluetoothThermal.writeBytes(bytes);
-
-  //       Future.delayed(const Duration(seconds: 11), () async {
-  //         Get.find<LoadingController>().startLoading(false);
-
-  //         await Get.find<LoadingController>()
-  //             .changeText(data: 'Successfully printed!!');
-  //         await Get.find<LoadingController>().changeStatus(data: true);
-  //         var isDisconnect = await PrintBluetoothThermal.disconnect;
-  //         print('is disconnect $isDisconnect');
-  //       });
-  //       print("print test result:  $result");
-  //     } else {
-  //       Get.find<LoadingController>().startLoading(false);
-
-  //       await Get.find<LoadingController>()
-  //           .changeText(data: 'Failed to bluetooth connect!!', error: true);
-  //       await Get.find<LoadingController>().changeStatus(data: true);
-  //     }
-  //   });
-  // }
 
   Future<void> _iosPrintEscPos(List<int> bytes, Generator generator) async {
     print('########## bytes length ${bytes.length}');
     bytes += generator.feed(2);
 
-    final bool result = await IosPrintTransport.connect(wifiPrinter: NetworkPrinterResolver.billPrinter(), 
-      macPrinterAddress:
-          Get.find<AuthController>().profileModel!.macBillPrinterIp!,
+    final profile = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>().profileModel
+        : null;
+    final macAddress = profile?.macBillPrinterIp ?? '';
+
+    final bool result = await IosPrintTransport.connect(
+      wifiPrinter: NetworkPrinterResolver.billPrinter(),
+      macPrinterAddress: macAddress,
     );
 
     // Small delay after connect (important on iPad)

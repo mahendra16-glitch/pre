@@ -694,7 +694,7 @@ class _PrintDialogState extends State<PrintDialog> {
           type: bluetoothPrinter.typePrinter,
           model: BluetoothPrinterInput(
             name: bluetoothPrinter.deviceName,
-            address: bluetoothPrinter.address!,
+            address: bluetoothPrinter.address ?? '',
             isBle: bluetoothPrinter.isBle ?? false,
           ),
         );
@@ -705,7 +705,7 @@ class _PrintDialogState extends State<PrintDialog> {
         // bytes += generator.feed(2);
         await _printerManager.connect(
           type: bluetoothPrinter.typePrinter,
-          model: TcpPrinterInput(ipAddress: bluetoothPrinter.address!),
+          model: TcpPrinterInput(ipAddress: bluetoothPrinter.address ?? ''),
         );
         break;
       default:

@@ -9979,26 +9979,42 @@ class _POSCartScreenState extends State<POSCartScreen> {
   }
 
   Future _kdsPrintEscPos(List<int> bytes) async {
-    // await printerManager.disconnect(type: PrinterType.bluetooth);
-    BluetoothPrinter? bluetoothPrinter;
-    if (Get.find<AuthController>().profileModel!.billPrinterType == 'usb') {
-      bluetoothPrinter = await BluetoothPrinter(
-          productId: Get.find<AuthController>().profileModel!.billProductId,
-          vendorId: Get.find<AuthController>().profileModel!.billVendorId,
-          typePrinter: PrinterType.usb);
-    } else {
-      bluetoothPrinter = await BluetoothPrinter(
-          typePrinter: Get.find<AuthController>().profileModel!.billWifiIp != ''
-              ? PrinterType.network
-              : PrinterType.bluetooth,
-          port: '9100',
-          address: Get.find<AuthController>().profileModel!.billWifiIp != ''
-              ? Get.find<AuthController>().profileModel!.billWifiIp
-              : Get.find<AuthController>().profileModel!.billPrinterIp,
-          deviceName: Get.find<AuthController>()
-              .profileModel!
-              .billPrinterName); // ip was mandadory
-    }
+    try {
+      final profile = Get.isRegistered<AuthController>()
+          ? Get.find<AuthController>().profileModel
+          : null;
+      if (profile == null) return;
+
+      final billType = (profile.billPrinterType ?? '').toLowerCase();
+      final isWifi = billType == 'wifi' ||
+          billType == 'network' ||
+          ((profile.billWifiIp ?? '').isNotEmpty &&
+              billType != 'bluetooth' &&
+              billType != 'usb');
+      final isUsb = billType == 'usb';
+
+      BluetoothPrinter bluetoothPrinter;
+      if (isUsb) {
+        bluetoothPrinter = BluetoothPrinter(
+            productId: profile.billProductId,
+            vendorId: profile.billVendorId,
+            typePrinter: PrinterType.usb);
+      } else if (isWifi) {
+        bluetoothPrinter = BluetoothPrinter(
+            typePrinter: PrinterType.network,
+            port: '9100',
+            address: (profile.billWifiIp ?? '').isNotEmpty
+                ? profile.billWifiIp!
+                : (profile.billPrinterIp ?? ''),
+            deviceName: profile.billPrinterName);
+      } else {
+        bluetoothPrinter = BluetoothPrinter(
+            typePrinter: PrinterType.bluetooth,
+            address: (profile.macBillPrinterIp ?? '').isNotEmpty
+                ? profile.macBillPrinterIp!
+                : (profile.billPrinterIp ?? ''),
+            deviceName: profile.billPrinterName);
+      }
 
     var data;
     // if (Get.find<AuthController>().profileModel!.billPrinterType == 'usb') {
@@ -10144,9 +10160,13 @@ class _POSCartScreenState extends State<POSCartScreen> {
     print('####24###### bytes length ${bytes.length}');
     // bytes += generator.feed(2);
 
+    final profile = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>().profileModel
+        : null;
+    final macAddress = profile?.macBillPrinterIp ?? '';
+
     final bool result = await IosPrintTransport.connect(wifiPrinter: NetworkPrinterResolver.billPrinter(), 
-      macPrinterAddress:
-          Get.find<AuthController>().profileModel!.macBillPrinterIp!,
+      macPrinterAddress: macAddress,
     );
 
     // Small delay after connect (important on iPad)

@@ -4,219 +4,219 @@ import 'package:flutter_esc_pos_utils/flutter_esc_pos_utils.dart';
 import 'package:get/get.dart';
 
 class PrinterConfig {
-  PrintConfigModel printConfig =
-      Get.find<AuthController>().profileModel!.printConfigList!.last;
+  PrintConfigModel? get _printConfig {
+    try {
+      final list = Get.find<AuthController>().profileModel?.printConfigList;
+      if (list != null && list.isNotEmpty) {
+        return list.last;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   PosStyles titleStyle() {
+    final cfg = _printConfig;
+    final title = cfg?.restaurantTitle;
     return PosStyles(
         align: PosAlign.center,
-        height: printConfig.restaurantTitle == null
+        height: title == null || !title.contains(',')
             ? PosTextSize.size3
-            : fonstSize(printConfig.restaurantTitle!.split(',').first),
-        width: printConfig.restaurantTitle == null
+            : fonstSize(title.split(',').first),
+        width: title == null || !title.contains(',')
             ? PosTextSize.size2
-            : fonstSize(printConfig.restaurantTitle!.split(',')[1]),
-        bold: printConfig.restaurantTitle == null
+            : fonstSize(title.split(',')[1]),
+        bold: title == null
             ? true
-            : printConfig.restaurantTitle!.split(',').last == 'true'
-                ? true
-                : false,
+            : title.split(',').last == 'true',
         fontType: PosFontType.fontA);
   }
 
   PosStyles addressStyle() {
+    final cfg = _printConfig;
+    final addr = cfg?.restaurantAddress;
     return PosStyles(
       align: PosAlign.center,
-      height: printConfig.restaurantAddress == null
+      height: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',').first),
-      width: printConfig.restaurantAddress == null
+          : fonstSize(addr.split(',').first),
+      width: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',')[1]),
-      bold: printConfig.restaurantAddress == null
+          : fonstSize(addr.split(',')[1]),
+      bold: addr == null
           ? false
-          : printConfig.restaurantAddress!.split(',').last == 'true'
-              ? true
-              : false,
+          : addr.split(',').last == 'true',
     );
   }
 
   PosStyles gstStyle() {
+    final cfg = _printConfig;
+    final gst = cfg?.restaurantGstno;
     return PosStyles(
-      height: printConfig.restaurantGstno == null
+      height: gst == null || !gst.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantGstno!.split(',').first),
-      width: printConfig.restaurantGstno == null
+          : fonstSize(gst.split(',').first),
+      width: gst == null || !gst.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantGstno!.split(',')[1]),
-      bold: printConfig.restaurantGstno == null
+          : fonstSize(gst.split(',')[1]),
+      bold: gst == null
           ? false
-          : printConfig.restaurantGstno!.split(',').last == 'true'
-              ? true
-              : false,
+          : gst.split(',').last == 'true',
       align: PosAlign.center,
     );
   }
 
   PosStyles orderCreateDateStyle() {
+    final cfg = _printConfig;
+    final addr = cfg?.restaurantAddress;
     return PosStyles(
       align: PosAlign.right,
       fontType: PosFontType.fontB,
-      height: printConfig.restaurantAddress == null
+      height: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',').first),
-      width: printConfig.restaurantAddress == null
+          : fonstSize(addr.split(',').first),
+      width: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',')[1]),
-      bold: printConfig.restaurantAddress == null
+          : fonstSize(addr.split(',')[1]),
+      bold: addr == null
           ? false
-          : printConfig.restaurantAddress!.split(',').last == 'true'
-              ? true
-              : false,
+          : addr.split(',').last == 'true',
     );
   }
 
   PosStyles orderIdStyle({bool isBold = false}) {
+    final cfg = _printConfig;
+    final addr = cfg?.restaurantAddress;
     return PosStyles(
       align: PosAlign.left,
       fontType: PosFontType.fontB,
-      height: printConfig.restaurantAddress == null
+      height: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',').first),
-      width: printConfig.restaurantAddress == null
+          : fonstSize(addr.split(',').first),
+      width: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',')[1]),
+          : fonstSize(addr.split(',')[1]),
       bold: isBold
           ? true
-          : printConfig.restaurantAddress == null
+          : addr == null
               ? false
-              : printConfig.restaurantAddress!.split(',').last == 'true'
-                  ? true
-                  : false,
+              : addr.split(',').last == 'true',
     );
   }
 
   PosStyles summryTitleStyle({bool isBold = false}) {
+    final cfg = _printConfig;
+    final addr = cfg?.restaurantAddress;
     return PosStyles(
       align: PosAlign.left,
-      // height: PosTextSize.size2,
-      // width: PosTextSize.size2,
       fontType: PosFontType.fontA,
-      // height: printConfig == null || printConfig.restaurantAddress == null
-      //     ? PosTextSize.size1
-      //     : fonstSize(printConfig.restaurantAddress.split(',').first),
-      // width: printConfig == null || printConfig.restaurantAddress == null
-      //     ? PosTextSize.size1
-      //     : fonstSize(printConfig.restaurantAddress.split(',')[1]),
       bold: isBold
           ? true
-          : printConfig.restaurantAddress == null
+          : addr == null
               ? false
-              : printConfig.restaurantAddress!.split(',').last == 'true'
-                  ? true
-                  : false,
+              : addr.split(',').last == 'true',
     );
   }
 
   PosStyles dineInStyle() {
+    final cfg = _printConfig;
+    final addr = cfg?.restaurantAddress;
     return PosStyles(
       align: PosAlign.left,
       fontType: PosFontType.fontB,
-      height: printConfig.restaurantAddress == null
+      height: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',').first),
-      width: printConfig.restaurantAddress == null
+          : fonstSize(addr.split(',').first),
+      width: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',')[1]),
-      bold: printConfig.restaurantAddress == null
+          : fonstSize(addr.split(',')[1]),
+      bold: addr == null
           ? false
-          : printConfig.restaurantAddress!.split(',').last == 'true'
-              ? true
-              : false,
+          : addr.split(',').last == 'true',
     );
   }
 
   PosStyles waiterNameStyle({PosAlign align = PosAlign.right}) {
+    final cfg = _printConfig;
+    final addr = cfg?.restaurantAddress;
     return PosStyles(
       align: align,
       fontType: PosFontType.fontB,
-      height: printConfig.restaurantAddress == null
+      height: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',').first),
-      width: printConfig.restaurantAddress == null
+          : fonstSize(addr.split(',').first),
+      width: addr == null || !addr.contains(',')
           ? PosTextSize.size1
-          : fonstSize(printConfig.restaurantAddress!.split(',')[1]),
-      bold: printConfig.restaurantAddress == null
+          : fonstSize(addr.split(',')[1]),
+      bold: addr == null
           ? false
-          : printConfig.restaurantAddress!.split(',').last == 'true'
-              ? true
-              : false,
+          : addr.split(',').last == 'true',
     );
   }
 
   PosStyles tableNoStyle() {
+    final cfg = _printConfig;
+    final tot = cfg?.restaurantTotalAmount;
     return PosStyles(
-        height: printConfig.restaurantTotalAmount == null
+        height: tot == null || !tot.contains(',')
             ? PosTextSize.size3
-            : fonstSize(printConfig.restaurantTotalAmount!.split(',').first),
-        width: printConfig.restaurantTotalAmount == null
+            : fonstSize(tot.split(',').first),
+        width: tot == null || !tot.contains(',')
             ? PosTextSize.size2
-            : fonstSize(printConfig.restaurantTotalAmount!.split(',')[1]),
-        bold: printConfig.restaurantTotalAmount == null
+            : fonstSize(tot.split(',')[1]),
+        bold: tot == null
             ? true
-            : printConfig.restaurantTotalAmount!.split(',').last == 'true'
-                ? true
-                : false,
+            : tot.split(',').last == 'true',
         align: PosAlign.center,
         fontType: PosFontType.fontA);
   }
 
   PosStyles foodStyle({bool isUnderLine = false}) {
+    final cfg = _printConfig;
+    final food = cfg?.restaurantFoodList;
     return PosStyles(
-        height: printConfig.restaurantFoodList == null
+        height: food == null || !food.contains(',')
             ? PosTextSize.size1
-            : fonstSize(printConfig.restaurantFoodList!.split(',').first),
-        width: printConfig.restaurantFoodList == null
+            : fonstSize(food.split(',').first),
+        width: food == null || !food.contains(',')
             ? PosTextSize.size1
-            : fonstSize(printConfig.restaurantFoodList!.split(',')[1]),
-        bold: printConfig.restaurantFoodList == null
+            : fonstSize(food.split(',')[1]),
+        bold: food == null
             ? false
-            : printConfig.restaurantFoodList!.split(',').last == 'true'
-                ? true
-                : false,
+            : food.split(',').last == 'true',
         align: PosAlign.left,
         fontType: PosFontType.fontB,
         underline: isUnderLine);
   }
 
   PosStyles subtotalStyle() {
+    final cfg = _printConfig;
+    final sub = cfg?.restaurantSubTotal;
     return PosStyles(
-        height: printConfig.restaurantSubTotal == null
+        height: sub == null || !sub.contains(',')
             ? PosTextSize.size1
-            : fonstSize(printConfig.restaurantSubTotal!.split(',').first),
-        width: printConfig.restaurantSubTotal == null
+            : fonstSize(sub.split(',').first),
+        width: sub == null || !sub.contains(',')
             ? PosTextSize.size1
-            : fonstSize(printConfig.restaurantSubTotal!.split(',')[1]),
-        bold: printConfig.restaurantSubTotal == null
+            : fonstSize(sub.split(',')[1]),
+        bold: sub == null
             ? false
-            : printConfig.restaurantSubTotal!.split(',').last == 'true'
-                ? true
-                : false,
+            : sub.split(',').last == 'true',
         align: PosAlign.center);
   }
 
   PosStyles totalStyle() {
+    final cfg = _printConfig;
+    final tot = cfg?.restaurantTotalAmount;
     return PosStyles(
-        height: printConfig.restaurantTotalAmount == null
+        height: tot == null || !tot.contains(',')
             ? PosTextSize.size3
-            : fonstSize(printConfig.restaurantTotalAmount!.split(',').first),
-        width: printConfig.restaurantTotalAmount == null
+            : fonstSize(tot.split(',').first),
+        width: tot == null || !tot.contains(',')
             ? PosTextSize.size2
-            : fonstSize(printConfig.restaurantTotalAmount!.split(',')[1]),
-        bold: printConfig.restaurantTotalAmount == null
+            : fonstSize(tot.split(',')[1]),
+        bold: tot == null
             ? true
-            : printConfig.restaurantTotalAmount!.split(',').last == 'true'
-                ? true
-                : false,
+            : tot.split(',').last == 'true',
         align: PosAlign.center,
         fontType: PosFontType.fontA);
   }

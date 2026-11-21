@@ -45,8 +45,9 @@ class NetworkPrinterResolver {
     required int? paperSize,
   }) {
     if (!_isIOS) return null;
-    if ((type ?? '').trim().toLowerCase() != 'wifi') return null;
-    if ((mac ?? '').trim().isNotEmpty) return null;
+    final cleanType = (type ?? '').trim().toLowerCase();
+    if (cleanType != 'wifi' && cleanType != 'network') return null;
+    if ((wifiIp ?? '').trim().isEmpty) return null;
     return NetworkPrinterTarget.parse(
       wifiIp,
       label: label,

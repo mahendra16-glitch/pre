@@ -1731,14 +1731,18 @@ class _BillingHomeScreenState extends State<BillingHomeScreen> {
     // await PrintBluetoothThermal.pairedBluetooths;
 
     // Future.delayed(Duration(seconds: 5), () async {
-    if (Get.find<AuthController>()
-            .profileModel!
-            .restaurantPrinterNew![currentPrintIndex]
-            .macPrinterIp ==
-            '' &&
-        NetworkPrinterResolver.kotPrinterAt(currentPrintIndex) == null) {
-      // showErrorToast(
-      //     '${Get.find<AuthController>().profileModel.restaurantPrinterNew[currentPrintIndex].areaName} kot failed');
+    final printers = Get.find<AuthController>().profileModel?.restaurantPrinterNew;
+    if (printers == null || currentPrintIndex < 0 || currentPrintIndex >= printers.length) {
+      isConnect = true;
+      isFailedPrint = true;
+      currentPrintIndex = currentPrintIndex + 1;
+      dataCheck();
+      return;
+    }
+    final currentPrinter = printers[currentPrintIndex];
+    final macAddress = currentPrinter.macPrinterIp ?? '';
+
+    if (macAddress.isEmpty && NetworkPrinterResolver.kotPrinterAt(currentPrintIndex) == null) {
       isConnect = true;
       isFailedPrint = true;
       failedCartProductList[currentPrintIndex] =
@@ -1746,11 +1750,9 @@ class _BillingHomeScreenState extends State<BillingHomeScreen> {
       currentPrintIndex = currentPrintIndex + 1;
       dataCheck();
     } else {
-      final bool result = await IosPrintTransport.connect(wifiPrinter: NetworkPrinterResolver.kotPrinterAt(currentPrintIndex), 
-          macPrinterAddress: Get.find<AuthController>()
-              .profileModel!
-              .restaurantPrinterNew![currentPrintIndex]
-              .macPrinterIp!);
+      final bool result = await IosPrintTransport.connect(
+          wifiPrinter: NetworkPrinterResolver.kotPrinterAt(currentPrintIndex), 
+          macPrinterAddress: macAddress);
       Future.delayed(Duration(seconds: 4), () async {
         if (result) {
           await IosPrintTransport.writeBytes(bytes);
