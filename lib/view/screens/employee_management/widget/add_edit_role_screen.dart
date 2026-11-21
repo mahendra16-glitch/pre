@@ -6,7 +6,7 @@ import 'package:mygenie_restaurant/helper/colors.dart';
 import 'package:mygenie_restaurant/util/styles.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
-import 'package:super_tooltip/super_tooltip.dart';
+import 'package:mygenie_restaurant/custom_package/super_tooltip/super_tooltip.dart';
 import 'package:get/get.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 

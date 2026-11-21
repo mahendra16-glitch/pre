@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 // import 'package:flutter_svg/flutter_svg.dart';
-import 'package:super_tooltip/super_tooltip.dart';
+import 'package:mygenie_restaurant/custom_package/super_tooltip/super_tooltip.dart';
 import 'package:get/get.dart';
 
 class RoleList extends StatefulWidget {
