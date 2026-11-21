@@ -164,7 +164,6 @@ class _EmployeeListState extends State<EmployeeList> {
                             showBottomBorder: true,
                             columns: [
                               DataColumn(
-                                columnWidth: const FixedColumnWidth(140),
                                 label: Expanded(
                                   flex: 7,
                                   child: Text(

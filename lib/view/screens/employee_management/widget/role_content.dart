@@ -166,7 +166,6 @@ class _RoleListState extends State<RoleList> {
                             showBottomBorder: true,
                             columns: [
                               DataColumn(
-                                columnWidth: const FixedColumnWidth(130),
                                 label: Expanded(
                                   flex: 7,
                                   child: Text(
