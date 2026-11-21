@@ -3436,7 +3436,7 @@ class _POSCartScreenState extends State<POSCartScreen> {
 
                     Get.find<LoadingController>().isLoading
                         ? const Padding(
-                            padding: EdgeInsetsGeometry.symmetric(vertical: 10),
+                            padding: EdgeInsets.symmetric(vertical: 10),
                             child: Center(child: CircularProgressIndicator()))
                         : Align(
                             alignment: Alignment.centerRight,
