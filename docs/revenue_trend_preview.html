@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Total Sales chart preview</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f5f5f5;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      color: #222;
+    }
+    .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px 40px; }
+    .tabs {
+      display: flex;
+      background: #fff;
+      border-radius: 15px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .tabs button {
+      flex: 1;
+      border: 0;
+      background: #fff;
+      color: #8a8a8a;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px 0;
+      cursor: pointer;
+    }
+    .tabs button.active { background: #047DD4; color: #fff; }
+    .head {
+      display: flex;
+      align-items: center;
+      padding: 8px 4px 14px;
+    }
+    .head h2 {
+      margin: 0;
+      color: #047DD4;
+      font-size: 12px;
+    }
+    .head .range { margin: 2px 0 0; color: #8a8a8a; font-size: 12px; }
+    .head .total { margin-left: auto; font-size: 22px; font-weight: 700; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 12px 8px;
+    }
+    svg { width: 100%; height: 320px; display: block; }
+    .tip {
+      position: fixed;
+      display: none;
+      background: #1c1c1c;
+      color: #fff;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      pointer-events: none;
+      z-index: 5;
+      min-width: 160px;
+    }
+    .tip b { display: block; margin-bottom: 4px; }
+    .dot { color: #4c8dff; }
+    .note { color: #888; font-size: 12px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="tabs" id="tabs">
+      <button data-tab="D">D</button>
+      <button data-tab="W" class="active">W</button>
+      <button data-tab="M">M</button>
+    </div>
+    <div class="head">
+      <div>
+        <h2>Total Sales</h2>
+        <p class="range" id="range"></p>
+      </div>
+      <div class="total" id="total"></div>
+    </div>
+    <div class="card">
+      <svg id="chart" viewBox="0 0 960 320"></svg>
+    </div>
+    <p class="note">
+      Preview only, with sample numbers. The header amount is
+      <b>summary.total_revenue</b> from the insights API. Bars are
+      <b>daily.revenue</b>. W is 9–15 Oct 2026. M is September 2026.
+    </p>
+  </div>
+  <div class="tip" id="tip"></div>
+  <script>
+    const inr = n => "₹" + Math.round(n).toLocaleString("en-IN");
+    const views = {
+      D: {
+        from: "2026-10-16",
+        to: "2026-10-16",
+        total: 2460,
+        days: [{ date: "2026-10-16", revenue: 2460, orders: 8 }]
+      },
+      W: {
+        from: "2026-10-09",
+        to: "2026-10-15",
+        total: 8450,
+        days: [
+          { date: "2026-10-09", revenue: 0, orders: 0 },
+          { date: "2026-10-10", revenue: 1440, orders: 14 },
+          { date: "2026-10-11", revenue: 203, orders: 1 },
+          { date: "2026-10-12", revenue: 3810, orders: 4 },
+          { date: "2026-10-13", revenue: 920, orders: 6 },
+          { date: "2026-10-14", revenue: 0, orders: 0 },
+          { date: "2026-10-15", revenue: 2077, orders: 9 }
+        ]
+      },
+      M: {
+        from: "2026-09-01",
+        to: "2026-09-30",
+        total: 36110,
+        days: [820, 0, 1460, 9800, 420, 0, 310, 2100, 180, 90, 6400, 410, 0, 760, 3100, 880, 150, 0, 540, 4200, 1900, 260, 80, 0, 1100, 340, 70, 0, 260, 480]
+          .map((revenue, i) => ({
+            date: "2026-09-" + String(i + 1).padStart(2, "0"),
+            revenue,
+            orders: revenue ? Math.max(1, Math.round(revenue / 180)) : 0
+          }))
+      }
+    };
+
+    const svg = document.getElementById("chart");
+    const tip = document.getElementById("tip");
+
+    function ticks(max) {
+      if (max <= 0) return [0];
+      const step = Math.pow(10, Math.floor(Math.log10(max)));
+      const nice = [1, 2, 2.5, 5, 10].map(m => m * step).find(s => max / s <= 4) || step * 10;
+      const out = [];
+      for (let v = 0; v <= max + nice * 0.01; v += nice) out.push(Math.round(v * 100) / 100);
+      return out;
+    }
+
+    function label(v) {
+      if (v >= 1000) {
+        const k = v / 1000;
+        return (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + "k";
+      }
+      return String(Math.round(v));
+    }
+
+    function shortDate(iso) {
+      return iso.slice(5);
+    }
+
+    function draw(key) {
+      const view = views[key];
+      document.getElementById("range").textContent = view.from + " - " + view.to;
+      document.getElementById("total").textContent = inr(view.total);
+
+      const days = view.days;
+      const n = days.length;
+      let run = 0;
+      const cumulative = days.map(d => (run += d.revenue));
+      const maxBar = Math.max(...days.map(d => d.revenue), 1);
+      const maxLine = Math.max(...cumulative, 1);
+      const L = 54, R = 900, T = 16, B = 278;
+      const slot = (R - L) / n;
+      const yBar = v => B - (v / maxBar) * (B - T);
+      const yLine = v => B - (v / maxLine) * (B - T);
+      const barW = Math.min(36, slot * 0.55);
+      const leftTicks = ticks(maxBar);
+      const rightTicks = ticks(maxLine);
+      const showLabel = i => n === 1 || n <= 7 || [0, 7, 14, 21, 29].includes(i);
+
+      let markup = `<defs>
+        <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#5b9bff"/>
+          <stop offset="100%" stop-color="#d6e6ff"/>
+        </linearGradient>
+        <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#f28c28" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="#f28c28" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>`;
+
+      leftTicks.forEach(v => {
+        const y = yBar(v);
+        markup += `<line x1="${L}" y1="${y}" x2="${R}" y2="${y}" stroke="#e6e6e6" stroke-dasharray="4 4"/>`;
+        markup += `<text x="${L - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#999">${label(v)}</text>`;
+      });
+      rightTicks.forEach(v => {
+        const y = yLine(v);
+        markup += `<text x="${R + 8}" y="${y + 4}" font-size="11" fill="#999">${label(v)}</text>`;
+      });
+
+      days.forEach((d, i) => {
+        const x = L + slot * i + slot / 2;
+        if (d.revenue > 0) {
+          const y = yBar(d.revenue);
+          markup += `<rect x="${x - barW / 2}" y="${y}" width="${barW}" height="${B - y}" rx="3" fill="url(#bar)"/>`;
+        }
+        if (showLabel(i)) {
+          markup += `<text x="${x}" y="302" text-anchor="middle" font-size="11" fill="#888">${shortDate(d.date)}</text>`;
+        }
+        markup += `<rect class="hit" data-i="${i}" x="${L + slot * i}" y="${T}" width="${slot}" height="${B - T}" fill="transparent"/>`;
+      });
+
+      const pts = cumulative.map((v, i) => {
+        const x = L + slot * i + slot / 2;
+        return [x, yLine(v)];
+      });
+      const line = pts.map(p => p.join(",")).join(" ");
+      const area = `${pts[0][0]},${B} ${line} ${pts[pts.length - 1][0]},${B}`;
+      markup += `<polygon points="${area}" fill="url(#area)"/>`;
+      markup += `<polyline points="${line}" fill="none" stroke="#f28c28" stroke-width="2.5"/>`;
+      pts.forEach(p => {
+        markup += `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#f28c28"/>`;
+      });
+      svg.innerHTML = markup;
+
+      svg.querySelectorAll(".hit").forEach(node => {
+        node.addEventListener("mousemove", e => {
+          const d = days[+node.dataset.i];
+          const avg = d.orders ? d.revenue / d.orders : 0;
+          const when = new Date(d.date + "T00:00:00");
+          const day = when.toLocaleDateString("en-US", { weekday: "short" });
+          tip.style.display = "block";
+          tip.style.left = (e.clientX + 14) + "px";
+          tip.style.top = (e.clientY - 20) + "px";
+          tip.innerHTML = `<b>${d.date} (${day})</b><span class="dot">●</span> Revenue: ${inr(d.revenue)}<br>${d.orders} orders · Avg ${inr(avg)}`;
+        });
+        node.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+      });
+    }
+
+    document.getElementById("tabs").addEventListener("click", e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("active", b === btn));
+      draw(btn.dataset.tab);
+    });
+
+    draw("W");
+  </script>
+</body>
+</html>

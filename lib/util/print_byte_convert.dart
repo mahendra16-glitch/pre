@@ -1,0 +1,2859 @@
+import 'dart:io';
+import 'package:image/image.dart' as prefix;
+import 'package:flutter_esc_pos_utils/flutter_esc_pos_utils.dart';
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:mygenie_restaurant/controller/table_controller.dart';
+import 'package:mygenie_restaurant/data/model/response/cart_model.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import '../controller/auth_controller.dart';
+import '../data/model/response/get_collect_bill_resoonse_model.dart';
+import '../data/model/response/get_paid_order_detail_response.dart';
+import '../data/model/response/get_waiter_order_list_response.dart';
+import '../data/model/response/profile_model.dart';
+import '../helper/logo_helper.dart';
+import '../helper/price_converter.dart';
+import '../helper/printer_config.dart';
+import 'app_constants.dart';
+import 'package:path_provider/path_provider.dart';
+import '../../data/model/response/get_swiggy_order_list_response.dart';
+import '../../../../data/model/response/get_station_order_list_response.dart'
+    as station;
+
+class PrintByteConvert {
+  Future<List<int>> byteConvert({
+    bool isShowDate = false,
+    int paperRoll = 80,
+    List<OrderDetails>? kotOrderList,
+    List<OrderDetailsBar>? billFoodList,
+    List<station.OrderDetailsFood>? stationOrderList,
+    List<OrderDetailsFood>? paidFoodList,
+    List<OrderFoodDetails>? swiggyOrderList,
+    List<CartModel>? cartList,
+    String orderId = '',
+    String paymentType = '',
+    String printType = '',
+    String printTitle = '',
+    String orderType = '',
+    String waiterName = '',
+    String stationName = '',
+    String date = '',
+    String custName = '',
+    String custPhone = '',
+    String deliveryCustPhone = '',
+    String deliveryCustName = '',
+    String deliveryCustAddress = '',
+    String deliveryCustPincode = '',
+    String deliveryAddressType = '',
+    String tablename = '',
+    String paymentUrl = '',
+    String orderNote = '',
+    double orderSubTotal = 0,
+    double gstAmount = 0,
+    double vatAmount = 0,
+    double swiggyTax = 0,
+    double serviceChargeAmount = 0,
+    double discount = 0,
+    double tips = 0,
+    double charge = 0,
+    double roomRemainingPay = 0,
+    double roomAdvancePay = 0,
+    double grandTotal = 0,
+    double deliveryCharge = 0,
+    String couponCode = '',
+    double couponDiscount = 0,
+    double loyaltyUsed = 0,
+    double walletUsed = 0,
+    double subTotalWithoutTax = 0,
+    double packingCharge = 0 ,
+  }) async {
+    bool isOutOfMenu = false;
+    List<int> bytes = [];
+    ProfileModel profileModel = Get.find<AuthController>().profileModel!;
+    PrintConfigModel printConfig = paperRoll == 80
+        ? profileModel.printConfigList!.last
+        : profileModel.printConfigList!.first;
+    isShowDate =
+        profileModel.restaurants!.first.showFoodDate == 'Yes' ? true : false;
+    final profile = await CapabilityProfile.load(name: 'XP-N160I');
+    final generator =
+        Generator(paperRoll == 58 ? PaperSize.mm58 : PaperSize.mm80, profile);
+    bytes += generator.setGlobalCodeTable('CP1252');
+
+    //////////////  Restaurant Detail ///////////////4
+    if (logoHelper.logoUrlPrint != null &&
+            printType != 'kot' &&
+            printType != 'swiggy_kot' &&
+            printType != 'station_kot'
+        //  &&
+        // GetPlatform.isAndroid
+        ) {
+      try {
+        bytes += generator.feed(1);
+        bytes += generator.image(logoHelper.logoUrlPrint!);
+      } catch (e) {
+        print(e);
+      }
+    }
+
+    if (printType == 'bill' ||
+        printType == 'billing' ||
+        printType == 'swiggy_bill' ||
+        printType == 'paid_bill' ||
+        profileModel.restaurants!.first.isShowAddressKot == 'Yes') {
+      if (profileModel.restaurants != null &&
+          profileModel.restaurants!.isNotEmpty) {
+        final restaurant = profileModel.restaurants!.first;
+        bytes += generator.text(restaurant.name ?? '',
+            styles: styleFunction(
+                name: printConfig.restaurantTitle ?? '',
+                isPaperSize80: paperRoll == 80));
+        bytes += generator.text(restaurant.address ?? '',
+            styles: styleFunction(
+                name: printConfig.restaurantAddress1 ?? '',
+                isPaperSize80: paperRoll == 80));
+        if (restaurant.phone != null && restaurant.phone != '')
+          bytes += generator.text(restaurant.phone ?? '',
+              styles: styleFunction(
+                  name: printConfig.restaurantAddress1 ?? '',
+                  isPaperSize80: paperRoll == 80));
+        if ((restaurant.gstCode ?? '').isNotEmpty)
+          bytes += generator.text('GST no. ${restaurant.gstCode ?? ''}',
+              styles: styleFunction(
+                  name: printConfig.restaurantGstno ?? '',
+                  isPaperSize80: paperRoll == 80));
+        if ((restaurant.fssai ?? '').isNotEmpty)
+          bytes += generator.text('FSI no. ${restaurant.fssai ?? ''}',
+              styles: styleFunction(
+                  name: printConfig.restaurantFssaiNo ?? '',
+                  isPaperSize80: paperRoll == 80));
+      }
+    }
+
+    if (printType == 'kot' ||
+        printType == 'swiggy_kot' ||
+        printType == 'station_kot')
+      bytes += generator.text(stationName,
+          styles: styleFunction(
+              name: printConfig.stationName!, isPaperSize80: paperRoll == 80));
+    if ((printType == 'kot' ||
+            printType == 'swiggy_kot' ||
+            printType == 'station_kot') &&
+        printTitle != '')
+      bytes += generator.text(printTitle,
+          styles: styleFunction(
+              name: printConfig.stationName!, isPaperSize80: paperRoll == 80));
+
+    ///////////////////  Order Detail /////////////////////
+
+    bytes += generator.row([
+      PosColumn(
+          text: printType == 'bill' ||
+                  printType == 'paid_bill' ||
+                  printType == 'billing' ||
+                  printType == 'swiggy_bill'
+              ? 'Bill No : $orderId'
+              : 'Order Id : $orderId',
+          width: 6,
+          styles: styleFunction(
+              align: PosAlign.left,
+              name: printConfig.resturantOrderId ?? '',
+              isPaperSize80: paperRoll == 80)),
+      PosColumn(
+          text: '$date',
+          width: 6,
+          styles: styleFunction(
+              align: PosAlign.right,
+              name: printConfig.dateTime ?? '',
+              isPaperSize80: paperRoll == 80)),
+    ]);
+    if (orderType != 'delivery' &&
+        orderType != 'take_away' &&
+        printType != 'swiggy_kot' &&
+        printType != 'swiggy_bill')
+      bytes += generator.row([
+        PosColumn(
+            text: 'Dine In',
+            width: 5,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.orderType ?? '',
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+          text: '',
+          width: 1,
+          styles: PosStyles(align: PosAlign.center),
+        ),
+        PosColumn(
+            text: '$waiterName',
+            width: 6,
+            styles: styleFunction(
+                align: PosAlign.right,
+                name: printConfig.billerName ?? '',
+                isPaperSize80: paperRoll == 80)),
+      ]);
+
+    bytes += generator.row([
+      PosColumn(
+          text: '$custName',
+          width: 5,
+          styles: styleFunction(
+              align: PosAlign.left,
+              name: printConfig.customerName ?? '',
+              isPaperSize80: paperRoll == 80)),
+      PosColumn(
+        text: '',
+        width: 2,
+        styles: PosStyles(align: PosAlign.center, underline: true),
+      ),
+      PosColumn(
+          text: '$custPhone',
+          width: 5,
+          styles: styleFunction(
+              align: PosAlign.right,
+              name: printConfig.resturantOrderId,
+              isPaperSize80: paperRoll == 80)),
+    ]);
+    bytes += generator.row([
+      PosColumn(
+        text: '',
+        width: 2,
+        styles: PosStyles(
+          align: PosAlign.center,
+          // fontType: PosFontType.fontB,
+        ),
+      ),
+      PosColumn(
+          text: '$tablename',
+          width: 8,
+          styles: styleFunction(
+              align: PosAlign.center,
+              name: printConfig.resturantTable ?? '',
+              isPaperSize80: paperRoll == 80)),
+      PosColumn(
+        text: '',
+        width: 2,
+        styles: PosStyles(
+          align: PosAlign.center,
+          fontType: PosFontType.fontB,
+        ),
+      ),
+    ]);
+    bytes += generator.hr(ch: '--');
+
+////////////////////////      food  detail    ////////////////////
+///////////////////////       KOT         ///////////////////////
+    if (printType == 'kot') {
+      bytes += generator.row([
+        PosColumn(
+            text: 'sl'.tr.toUpperCase(),
+            width: 2,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader ?? '',
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+          text: 'item_info'.tr,
+          width: 8,
+          styles: styleFunction(
+              align: PosAlign.center,
+              name: printConfig.resturantFoodListHeader ?? '',
+              isPaperSize80: paperRoll == 80),
+        ),
+        PosColumn(
+          text: 'qty'.tr,
+          width: 2,
+          styles: styleFunction(
+              align: PosAlign.center,
+              name: printConfig.resturantFoodListHeader ?? '',
+              isPaperSize80: paperRoll == 80),
+        ),
+      ]);
+      bytes += generator.hr(ch: '--');
+      for (var i = 0; i < kotOrderList!.length; i++) {
+        OrderDetails cart = kotOrderList[i];
+        String variationText = '';
+        String addons = '';
+
+        if ((cart.variation != null && cart.variation!.isNotEmpty) &&
+            (profileModel.restaurants?.first.foodWithVariance == 'Yes')) {
+          variationText += '(';
+          List<String> labelList = [];
+
+          for (int j = 0; j < (cart.variation?.length ?? 0); j++) {
+            if (cart.variation?[j].values != null) {
+              for (var element in cart.variation![j].values ?? []) {
+                labelList.add(element.level ?? '');
+              }
+            }
+          }
+          variationText += '${labelList.join(',')}';
+          variationText += ')';
+        } else if ((cart.variation != null && cart.variation!.isNotEmpty) &&
+            (profileModel.restaurants?.first.foodWithVariance != 'Yes')) {
+          for (int j = 0; j < (cart.variation?.length ?? 0); j++) {
+            variationText +=
+                '${variationText.isNotEmpty ? ', ' : ''}${cart.variation![j].name ?? ''} (';
+
+            if (cart.variation?[j].values != null) {
+              List<String> labelList = [];
+              for (var element in cart.variation![j].values ?? []) {
+                labelList.add(element.level ?? '');
+              }
+              variationText +=
+                  '${variationText.endsWith('(') ? '' : ', '}${labelList.join(',')}';
+            }
+
+            variationText += ')';
+          }
+        }
+
+        for (var i = 0; i < (cart.addOns?.length ?? 0); i++) {
+          if (addons != '') {
+            addons += ', ';
+          }
+          addons +=
+              '${cart.addOns?[i].name ?? ''} (${formatQuantity(cart.addOns?[i].qty)})';
+        }
+
+        bytes += generator.row([
+          PosColumn(
+              text: '${i + 1}.',
+              width: 2,
+              styles: styleFunction(
+                  isUnderline: cart.foodStatus == 3,
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList ?? '',
+                  isPaperSize80: paperRoll == 80)),
+          PosColumn(
+            text: profileModel.restaurants?.first.foodWithVariance == 'Yes'
+                ? '${cart.foodDetails?.name ?? ''} $variationText'
+                : '${cart.foodDetails?.name ?? ''}',
+            width: 8,
+            styles: styleFunction(
+                isUnderline: cart.foodStatus == 3,
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList ?? '',
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: 
+            // '${cart.quantity}',
+            formatQuantity(cart.quantity),
+            width: 2,
+            styles: styleFunction(
+                isUnderline: cart.foodStatus == 3,
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList ?? '',
+                isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+
+        if (addons != '') {
+          bytes += generator.row([
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(
+                align: PosAlign.center,
+              ),
+            ),
+            PosColumn(
+              text: 'Add-Ons :$addons',
+              width: 8,
+              styles: styleFunction(
+                  isUnderline: cart.foodStatus == 3,
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList ?? '',
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PrinterConfig().foodStyle(),
+            ),
+          ]);
+        }
+        if (variationText != '' &&
+            (profileModel.restaurants?.first.foodWithVariance != 'Yes')) {
+          bytes += generator.row([
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(
+                align: PosAlign.center,
+              ),
+            ),
+            PosColumn(
+              text: 'Variants  :$variationText',
+              width: 8,
+              styles: styleFunction(
+                  isUnderline: cart.foodStatus == 3,
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList ?? '',
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(align: PosAlign.center),
+            ),
+          ]);
+        }
+
+        if (orderNote != '' &&
+            (cart.foodDetails?.name?.toLowerCase().contains('out of') ??
+                false)) {
+          isOutOfMenu = true;
+          bytes += generator.row([
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(
+                align: PosAlign.center,
+              ),
+            ),
+            PosColumn(
+                text: 'Notes  :$orderNote',
+                width: 8,
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList ?? '',
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '', width: 2, styles: PosStyles(align: PosAlign.center)),
+          ]);
+        }
+
+        if ((cart.foodLevelNotes ?? '') != '') {
+          bytes += generator.row([
+            PosColumn(
+                text: '', width: 2, styles: PosStyles(align: PosAlign.center)),
+            PosColumn(
+                text: 'Notes  :${cart.foodLevelNotes ?? ''}',
+                width: 8,
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList ?? '',
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '', width: 2, styles: PosStyles(align: PosAlign.center)),
+          ]);
+        }
+        bytes += generator.hr(ch: '....');
+      }
+    }
+    if (printType == 'station_kot') {
+      bytes += generator.row([
+        PosColumn(
+            text: 'sl'.tr.toUpperCase(),
+            width: 2,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+          text: 'item_info'.tr,
+          width: 8,
+          styles: styleFunction(
+              align: PosAlign.center,
+              name: printConfig.resturantFoodListHeader!,
+              isPaperSize80: paperRoll == 80),
+        ),
+        PosColumn(
+          text: 'qty'.tr,
+          width: 2,
+          styles: styleFunction(
+              align: PosAlign.center,
+              name: printConfig.resturantFoodListHeader!,
+              isPaperSize80: paperRoll == 80),
+        ),
+      ]);
+      bytes += generator.hr(ch: '--');
+      for (var i = 0; i < stationOrderList!.length; i++) {
+        station.OrderDetailsFood cart = stationOrderList[i];
+        String variationText = '';
+        String addons = '';
+
+        if (cart.variation != null &&
+            cart.variation!.isNotEmpty &&
+            profileModel.restaurants!.first.foodWithVariance == 'Yes') {
+          variationText += '(';
+          List<String> labelList = [];
+
+          for (int j = 0; j < cart.variation!.length; j++) {
+            if (cart.variation![j].values != null) {
+              for (var element in cart.variation![j].values!) {
+                labelList.add(element.level!);
+              }
+            }
+          }
+          variationText += '${labelList.join(',')}';
+          variationText += ')';
+        } else if (cart.variation != null &&
+            cart.variation!.isNotEmpty &&
+            profileModel.restaurants!.first.foodWithVariance != 'Yes') {
+          for (int j = 0; j < cart.variation!.length; j++) {
+            variationText +=
+                '${variationText.isNotEmpty ? ', ' : ''}${cart.variation![j].name} (';
+
+            if (cart.variation![j].values != null) {
+              List<String> labelList = [];
+              for (var element in cart.variation![j].values!) {
+                labelList.add(element.level!);
+              }
+              variationText +=
+                  '${variationText.endsWith('(') ? '' : ', '}${labelList.join(',')}';
+            }
+
+            variationText += ')';
+          }
+        }
+
+        for (var i = 0; i < cart.addOns!.length; i++) {
+          if (addons != '') {
+            addons += ', ';
+          }
+          addons += '${cart.addOns![i].name} (${formatQuantity(cart.addOns![i].qty)})';
+        }
+
+        bytes += generator.row([
+          PosColumn(
+              text: '${i + 1}.',
+              width: 2,
+              styles: styleFunction(
+                  isUnderline: cart.foodStatus == 3,
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80)),
+          PosColumn(
+            text: profileModel.restaurants!.first.foodWithVariance == 'Yes'
+                ? '${cart.foodDetails!.name} $variationText'
+                : '${cart.foodDetails!.name}',
+            width: 8,
+            styles: styleFunction(
+                isUnderline: cart.foodStatus == 3,
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList!,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: 
+            // '${cart.quantity}',
+            formatQuantity(cart.quantity),
+            width: 2,
+            styles: styleFunction(
+                isUnderline: cart.foodStatus == 3,
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList!,
+                isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+
+        if (addons != '') {
+          bytes += generator.row([
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(
+                align: PosAlign.center,
+              ),
+            ),
+            PosColumn(
+              text: 'Add-Ons :$addons',
+              width: 8,
+              styles: styleFunction(
+                  isUnderline: cart.foodStatus == 3,
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PrinterConfig().foodStyle(),
+            ),
+          ]);
+        }
+        if (variationText != '' &&
+            profileModel.restaurants!.first.foodWithVariance != 'Yes') {
+          bytes += generator.row([
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(
+                align: PosAlign.center,
+              ),
+            ),
+            PosColumn(
+              text: 'Variants  :$variationText',
+              width: 8,
+              styles: styleFunction(
+                  isUnderline: cart.foodStatus == 3,
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(align: PosAlign.center),
+            ),
+          ]);
+        }
+
+        if (orderNote != '' &&
+            cart.foodDetails!.name!.toLowerCase().contains('out of')) {
+          isOutOfMenu = true;
+          bytes += generator.row([
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(
+                align: PosAlign.center,
+              ),
+            ),
+            PosColumn(
+                text: 'Notes  :${orderNote ?? ''}',
+                width: 8,
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '', width: 2, styles: PosStyles(align: PosAlign.center)),
+          ]);
+        }
+
+        if (cart.foodLevelNotes != '') {
+          bytes += generator.row([
+            PosColumn(
+                text: '', width: 2, styles: PosStyles(align: PosAlign.center)),
+            PosColumn(
+                text: 'Notes  :${cart.foodLevelNotes}',
+                width: 8,
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '', width: 2, styles: PosStyles(align: PosAlign.center)),
+          ]);
+        }
+        bytes += generator.hr(ch: '....');
+      }
+    }
+
+///////////////////////     SWIGGY  KOT         ///////////////////////
+    if (printType == 'swiggy_kot') {
+      bytes += generator.row([
+        PosColumn(
+            text: 'sl'.tr.toUpperCase(),
+            width: 2,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+          text: 'item_info'.tr,
+          width: 8,
+          styles: styleFunction(
+              align: PosAlign.center,
+              name: printConfig.resturantFoodListHeader!,
+              isPaperSize80: paperRoll == 80),
+        ),
+        PosColumn(
+          text: 'qty'.tr,
+          width: 2,
+          styles: styleFunction(
+              align: PosAlign.center,
+              name: printConfig.resturantFoodListHeader!,
+              isPaperSize80: paperRoll == 80),
+        ),
+      ]);
+      bytes += generator.hr(ch: '--');
+      for (var i = 0; i < swiggyOrderList!.length; i++) {
+        OrderFoodDetails cart = swiggyOrderList[i];
+        String? addonGroupTitle;
+        String? variationGroupTitle;
+        String addonText = '';
+        String variationText = '';
+
+        for (var addon in cart.addOns) {
+          if (addon.group != null) {
+            if (addon.group!.isVariant == true) {
+              // 🔹 Handle Variation
+              variationGroupTitle ??= addon.group!.title ?? '';
+              variationText += "${addon.title}(${addon.quantity ?? 0}), ";
+            } else {
+              // 🔹 Handle Add-on
+              addonGroupTitle ??= addon.group!.title ?? '';
+              addonText += "${addon.title}(${formatQuantity(addon.quantity)}), ";
+            }
+          }
+        }
+        if (addonText.isNotEmpty) {
+          addonText = "${addonText.trim().replaceAll(RegExp(r',$'), '')}";
+          // addonText =
+          //     "$addonGroupTitle (${addonText.trim().replaceAll(RegExp(r',$'), '')})";
+        }
+        if (variationText.isNotEmpty) {
+          variationText =
+              "${variationText.trim().replaceAll(RegExp(r',$'), '')}";
+          // variationText =
+          //     "$variationGroupTitle (${variationText.trim().replaceAll(RegExp(r',$'), '')})";
+        }
+        // String variationText = '';
+        // String addons = '';
+
+        // if (cart.variation.isNotEmpty &&
+        //     profileModel.restaurants!.first.foodWithVariance == 'Yes') {
+
+        //   variationText += '(';
+        //   List<String> labelList = [];
+
+        //   for (int j = 0; j < cart.variation.length; j++) {
+        //     if (cart.variation[j].values != null) {
+        //       for (var element in cart.variation[j].values!) {
+        //         labelList.add(element.level!);
+        //       }
+        //     }
+        //   }
+        //   variationText += '${labelList.join(',')}';
+        //   variationText += ')';
+        // } else if (cart.variation.isNotEmpty &&
+        //     profileModel.restaurants!.first.foodWithVariance != 'Yes') {
+        //   for (int j = 0; j < cart.variation.length; j++) {
+        //     variationText +=
+        //         '${variationText.isNotEmpty ? ', ' : ''}${cart.variation[j].name} (';
+
+        //     if (cart.variation[j].values != null) {
+        //       List<String> labelList = [];
+        //       for (var element in cart.variation[j].values!) {
+        //         labelList.add(element.level!);
+        //       }
+        //       variationText +=
+        //           '${variationText.endsWith('(') ? '' : ', '}${labelList.join(',')}';
+        //     }
+
+        //     variationText += ')';
+        //   }
+        // }
+
+        // for (var i = 0; i < cart.addOns.length; i++) {
+        //   if (addons != '') {
+        //     addons += ', ';
+        //   }
+        //   addons += '${cart.addOns[i].name} (${cart.addOns[i].qty})';
+        // }
+
+        bytes += generator.row([
+          PosColumn(
+              text: '${i + 1}.',
+              width: 2,
+              styles: styleFunction(
+                  isUnderline: printTitle == 'Cancel KOT',
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList ?? '',
+                  isPaperSize80: paperRoll == 80)),
+          PosColumn(
+            text: profileModel.restaurants?.first.foodWithVariance == 'Yes'
+                ? '${cart.title} $variationText'
+                : '${cart.title}',
+            width: 8,
+            styles: styleFunction(
+                isUnderline: printTitle == 'Cancel KOT',
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList ?? '',
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: 
+            // '${cart.quantity}',
+            formatQuantity(cart.quantity),
+            width: 2,
+            styles: styleFunction(
+                isUnderline: printTitle == 'Cancel KOT',
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList ?? '',
+                isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+
+        if (addonText != '') {
+          bytes += generator.row([
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(
+                align: PosAlign.center,
+              ),
+            ),
+            PosColumn(
+              text: 'Add-Ons :$addonText',
+              width: 8,
+              styles: styleFunction(
+                  isUnderline: printTitle == 'Cancel KOT',
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PrinterConfig().foodStyle(),
+            ),
+          ]);
+        }
+        if (variationText != '' &&
+            profileModel.restaurants!.first.foodWithVariance != 'Yes') {
+          bytes += generator.row([
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(
+                align: PosAlign.center,
+              ),
+            ),
+            PosColumn(
+              text: 'Variants  :$variationText',
+              width: 8,
+              styles: styleFunction(
+                  isUnderline: printTitle == 'Cancel KOT',
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(
+              text: '',
+              width: 2,
+              styles: PosStyles(align: PosAlign.center),
+            ),
+          ]);
+        }
+
+        if (cart.foodLevelNotes != '') {
+          bytes += generator.row([
+            PosColumn(
+                text: '', width: 2, styles: PosStyles(align: PosAlign.center)),
+            PosColumn(
+                text: 'Notes  :${cart.foodLevelNotes}',
+                width: 8,
+                styles: styleFunction(
+                    isUnderline: printTitle == 'Cancel KOT',
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '', width: 2, styles: PosStyles(align: PosAlign.center)),
+          ]);
+        }
+        bytes += generator.hr(ch: '....');
+      }
+    }
+/////////////////////         BILL        /////////////////////
+    if (printType == 'bill') {
+      bytes += generator.row([
+        // PosColumn(
+        //   text: 'SL',
+        //   width: getOrderTypeValue('sl',
+        //       isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+        //   styles: styleFunction(
+        //       align: PosAlign.left,
+        //       name: printConfig.resturantFoodListHeader!,
+        //       isPaperSize80: paperRoll == 80),
+        // ),
+        PosColumn(
+            text: 'item_info'.tr,
+            width: getOrderTypeValue('name',
+                isHideSl: true,
+                isShowDate: isShowDate,
+                printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'qty'.tr,
+            width: getOrderTypeValue('qty',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'Price',
+            width: getOrderTypeValue('price',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'Total',
+            width: getOrderTypeValue('total',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        if (isShowDate && paperRoll == 80)
+          PosColumn(
+              text: 'Date',
+              width: getOrderTypeValue('date',
+                  isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+              styles: styleFunction(
+                  align: PosAlign.left,
+                  name: printConfig.resturantFoodListHeader!,
+                  isPaperSize80: paperRoll == 80)),
+      ]);
+      bytes += generator.hr(ch: '--');
+
+      for (var i = 0; i < billFoodList!.length; i++) {
+        OrderDetailsBar food = billFoodList[i];
+        String variationText = '';
+        String addons = '';
+
+        double variationTotal = 0;
+        double addonsTotal = 0;
+        double variationBasePrice = 0;
+        double addonBasePrice = 0;
+        double halfVariationPrice = 0;
+
+        if (food.variation != null && food.variation!.isNotEmpty) {
+          variationText += '(';
+
+          List<String> labelList = [];
+          for (int j = 0; j < food.variation!.length; j++) {
+            // variationText +=
+            //     '${variationText.isNotEmpty ? ', ' : ''}${food.variation[j].name} (';
+
+            if (food.variation![j].values != null) {
+              for (var element in food.variation![j].values!) {
+                labelList.add(element.level!);
+                // variationBasePrice += double.parse(element.optionPrice);
+                // variationTotal +=
+                //     (double.parse(element.optionPrice) * food.quantity);
+                if ((food.variation?[j].name?.toUpperCase() ?? '') ==
+                    'HALFNHALF') {
+                  if (halfVariationPrice <
+                      ((element.optionPrice != null && food.quantity != null)
+                          ? double.parse(element.optionPrice!) * food.quantity!
+                          : 0)) {
+                    variationBasePrice = (element.optionPrice != null)
+                        ? double.parse(element.optionPrice!)
+                        : 0;
+                    halfVariationPrice = (element.optionPrice != null &&
+                            food.quantity != null)
+                        ? double.parse(element.optionPrice!) * food.quantity!
+                        : 0;
+                  }
+                } else {
+                  variationBasePrice =variationBasePrice+ ((element.optionPrice != null)
+                      ? double.parse(element.optionPrice!)
+                      : 0);
+
+                  variationTotal = variationTotal +
+                      ((element.optionPrice != null && food.quantity != null)
+                          ? double.parse(element.optionPrice!) * food.quantity!
+                          : 0);
+                }
+              }
+              variationTotal = variationTotal + halfVariationPrice;
+
+              // variationText +=
+              //     '${variationText.endsWith('(') ? '' : ', '}${labelList.join(',')}';
+            }
+
+            // variationText += ')';
+          }
+          variationText += '${labelList.join(',')}';
+          variationText += ')';
+        }
+
+        if (food.addOns != null) {
+          for (var i = 0; i < food.addOns!.length; i++) {
+            final addOn = food.addOns![i];
+            final addOnName = addOn.name ?? '';
+            final addOnQuantity = addOn.quantity ?? 0;
+            final addOnPrice = addOn.price ?? 0.0;
+            final foodQuantity = food.quantity ?? 0;
+            addons += '${addOnName} (${addOnQuantity})';
+            addonBasePrice = addonBasePrice + (addOnPrice * addOnQuantity);
+            addonsTotal =
+                addonsTotal + ((addOnPrice * addOnQuantity) * foodQuantity);
+          }
+        }
+        String foodName = ('${food.foodDetails!['name']} $variationText')
+            .toString()
+            .replaceAll('-', ' ')
+            .replaceAll(' – ', ' ');
+        if (food.foodStatus != 3)
+          bytes += generator.row([
+            // PosColumn(
+            //     text: '${i + 1}.',
+            //     width: getOrderTypeValue('sl',
+            //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            //     styles: styleFunction(
+            //         isUnderline: food.foodStatus == 3,
+            //         align: PosAlign.left,
+            //         name: printConfig.restaurantFoodList!,
+            //         isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: foodName,
+                width: getOrderTypeValue('name',
+                    isShowDate: isShowDate,
+                    isHideSl: true,
+                    printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    isUnderline: food.foodStatus == 3,
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: 
+                // '${food.quantity}',
+                formatQuantity(food.quantity),
+                width: getOrderTypeValue('qty',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    isUnderline: food.foodStatus == 3,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: food.isComplementary != null && food.isComplementary!
+                    ? '0'
+                    : ((food.foodDetails!['name'].toString().toUpperCase() ==
+                            'CHECK IN')
+                        ? '${((roomAdvancePay + roomRemainingPay).toInt())}'
+                        : '${(food.unitPrice! + variationBasePrice).toInt()}'),
+                // '${(food.unitPrice * food.quantity) + (variationTotal) + (addonsTotal)}',
+                width: getOrderTypeValue('price',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    isUnderline: food.foodStatus == 3,
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: food.isComplementary != null && food.isComplementary!
+                    ? '0'
+                    : ((food.foodDetails!['name'].toString().toUpperCase() ==
+                            'CHECK IN')
+                        ? '${((roomAdvancePay + roomRemainingPay).toInt())}'
+                        : '${((food.unitPrice! * food.quantity!) + variationTotal).toInt()}'),
+                // '${(food.unitPrice * food.quantity) + (variationTotal) + (addonsTotal)}',
+                width: getOrderTypeValue('total',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.right,
+                    isUnderline: food.foodStatus == 3,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            if (isShowDate && paperRoll == 80)
+              PosColumn(
+                  text:
+                      '${DateFormat('dd-MMM').format(DateTime.parse(food.createdAt!))}',
+                  width: getOrderTypeValue('date',
+                      isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                  styles: styleFunction(
+                      align: PosAlign.right,
+                      isUnderline: food.foodStatus == 3,
+                      name: printConfig.restaurantFoodList!,
+                      isPaperSize80: paperRoll == 80)),
+          ]);
+        if (food.foodStatus != 3 && addons != '' && addonsTotal != 0) {
+          // bytes += generator.hr(ch: '....');
+         
+// for (var a = 0; a < food.addOns!.length; a++) {
+//   bytes += generator.row([
+           
+
+//             PosColumn(
+//                 text:a==0?'Add-Ons :${food.addOns![a].name}': '${food.addOns![a].name}',
+//                 width: getOrderTypeValue('name',
+//                     isShowDate: isShowDate,
+//                     isHideSl: true,
+//                     printerSize80mm: paperRoll == 80),
+//                 styles: styleFunction(
+//                     align: PosAlign.left,
+//                     isUnderline: food.foodStatus == 3,
+//                     name: printConfig.restaurantFoodList!,
+//                     isPaperSize80: paperRoll == 80)),
+//             PosColumn(
+//                 text: '${food.addOns![a].quantity}',
+//                 width: getOrderTypeValue('qty',
+//                     isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+//                 styles: styleFunction(
+//                     align: PosAlign.left,
+//                     name: printConfig.restaurantFoodList!,
+//                     isPaperSize80: paperRoll == 80)),
+//             PosColumn(
+//                 text: food.isComplementary != null && food.isComplementary!
+//                     ? '0'
+//                     : '${food.addOns![a].price}',
+//                 width: getOrderTypeValue('price',
+//                     isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+//                 styles: styleFunction(
+//                     align: PosAlign.left,
+//                     isUnderline: food.foodStatus == 3,
+//                     name: printConfig.restaurantFoodList!,
+//                     isPaperSize80: paperRoll == 80)),
+//             PosColumn(
+//                 text: food.isComplementary != null && food.isComplementary!
+//                     ? '0'
+//                     : '${food.addOns![a].price!*food.quantity!}',
+//                 width: getOrderTypeValue('total',
+//                     isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+//                 styles: styleFunction(
+//                     align: PosAlign.right,
+//                     isUnderline: food.foodStatus == 3,
+//                     name: printConfig.restaurantFoodList!,
+//                     isPaperSize80: paperRoll == 80)),
+//             if (isShowDate && paperRoll == 80)
+//               PosColumn(
+//                   text: '',
+//                   width: getOrderTypeValue('date',
+//                       isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+//                   styles: styleFunction(
+//                       align: PosAlign.left,
+//                       name: printConfig.restaurantFoodList!,
+//                       isPaperSize80: paperRoll == 80)),
+//           ]);
+// }
+
+          bytes += generator.row([
+            // PosColumn(
+            //     text: '',
+            //     width: getOrderTypeValue('sl',
+            //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            //     styles: styleFunction(
+            //         align: PosAlign.left,
+            //         name: printConfig.restaurantFoodList!,
+            //         isPaperSize80: paperRoll == 80)),
+
+
+            PosColumn(
+                text: 'Add-Ons :$addons',
+                width: getOrderTypeValue('name',
+                    isShowDate: isShowDate,
+                    isHideSl: true,
+                    printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    isUnderline: food.foodStatus == 3,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('qty',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: food.isComplementary != null && food.isComplementary!
+                    ? '0'
+                    : '${addonBasePrice.toInt()}',
+                width: getOrderTypeValue('price',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    isUnderline: food.foodStatus == 3,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: food.isComplementary != null && food.isComplementary!
+                    ? '0'
+                    : '${addonsTotal.toInt()}',
+                width: getOrderTypeValue('total',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.right,
+                    isUnderline: food.foodStatus == 3,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            if (isShowDate && paperRoll == 80)
+              PosColumn(
+                  text: '',
+                  width: getOrderTypeValue('date',
+                      isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                  styles: styleFunction(
+                      align: PosAlign.left,
+                      name: printConfig.restaurantFoodList!,
+                      isPaperSize80: paperRoll == 80)),
+          ]);
+        }
+
+        if (food.foodStatus != 3 &&
+            orderNote != '' &&
+            food.foodDetails!['name']
+                .toString()
+                .toLowerCase()
+                .contains('out of')) {
+          bytes += generator.hr(ch: '....');
+          // bytes += generator.row([
+          //   PosColumn(
+          //     text: '',
+          //     width: 2,
+          //     styles: PosStyles(
+          //       align: PosAlign.center,
+          //     ),
+          //   ),
+          //   PosColumn(
+          //       text: 'Notes  :$orderNote',
+          //       width: 8,
+          //       styles: styleFunction(
+          //           align: PosAlign.left,
+          //           name: printConfig.restaurantFoodList,
+          //           isPaperSize80: paperRoll == 80)),
+          //   PosColumn(
+          //     text: '',
+          //     width: 2,
+          //     styles: PosStyles(align: PosAlign.center),
+          //   ),
+          // ]);
+          bytes += generator.row([
+            // PosColumn(
+            //     text: '',
+            //     width: getOrderTypeValue('sl',
+            //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            //     styles: styleFunction(
+            //         align: PosAlign.left,
+            //         name: printConfig.restaurantFoodList!,
+            //         isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: 'Notes  :$orderNote',
+                width: getOrderTypeValue('name',
+                    isShowDate: isShowDate,
+                    isHideSl: true,
+                    printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('qty',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('price',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('total',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            if (isShowDate && paperRoll == 80)
+              PosColumn(
+                  text: '',
+                  width: getOrderTypeValue('date',
+                      isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                  styles: styleFunction(
+                      align: PosAlign.left,
+                      name: printConfig.restaurantFoodList!,
+                      isPaperSize80: paperRoll == 80)),
+          ]);
+        }
+        if (food.foodStatus != 3) bytes += generator.hr(ch: '....');
+      }
+    }
+
+// /////////////////       PAID BILL DETAIL  ////////////////
+    if (printType == 'paid_bill') {
+      bytes += generator.row([
+        // PosColumn(
+        //     text: 'SL',
+        //     width: getOrderTypeValue('sl',
+        //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+        //     styles: styleFunction(
+        //         align: PosAlign.left,
+        //         name: printConfig.resturantFoodListHeader!,
+        //         isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'item_info'.tr,
+            width: getOrderTypeValue('name',
+                isShowDate: isShowDate,
+                isHideSl: true,
+                printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'qty'.tr,
+            width: getOrderTypeValue('qty',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'Price',
+            width: getOrderTypeValue('price',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.right,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'Total',
+            width: getOrderTypeValue('total',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.right,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        if (isShowDate && paperRoll == 80)
+          PosColumn(
+              text: 'Date',
+              width: getOrderTypeValue('date',
+                  isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+              styles: styleFunction(
+                  align: PosAlign.right,
+                  name: printConfig.resturantFoodListHeader!,
+                  isPaperSize80: paperRoll == 80)),
+      ]);
+      bytes += generator.hr(ch: '--');
+      for (var i = 0; i < paidFoodList!.length; i++) {
+        OrderDetailsFood food = paidFoodList[i];
+        String variationText = '';
+        String addons = '';
+
+        double variationTotal = 0;
+        double halfVariationPrice = 0;
+        double baseVariation = 0;
+        // double baseAddon = 0;
+        double addonsTotal = 0;
+
+        if (food.variation != null && food.variation!.isNotEmpty) {
+          variationText += '(';
+          List<String> labelList = [];
+          for (int j = 0; j < (food.variation?.length ?? 0); j++) {
+            final variation = food.variation![j];
+            final variationName = variation.name ?? '';
+            final variationValues = variation.values;
+            if (variationValues != null) {
+              for (var element in variationValues) {
+                labelList.add(element.label ?? '');
+                final optionPriceStr = element.optionPrice ?? '0';
+                final foodQty = food.quantity ?? 0;
+                if ((variationName).toUpperCase() == 'HALFNHALF') {
+                  final optionPrice = double.tryParse(optionPriceStr) ?? 0.0;
+                  if (halfVariationPrice < optionPrice * foodQty) {
+                    baseVariation = optionPrice;
+                    halfVariationPrice = optionPrice * foodQty;
+                  }
+                } else {
+                  final optionPrice = double.tryParse(optionPriceStr) ?? 0.0;
+                  baseVariation = optionPrice;
+                  variationTotal = variationTotal + (optionPrice * foodQty);
+                }
+              }
+              variationTotal = variationTotal + halfVariationPrice;
+            }
+          }
+          variationText += '${labelList.join(',')}';
+          variationText += ')';
+        }
+
+        if (food.addOns != null) {
+          for (var i = 0; i < (food.addOns?.length ?? 0); i++) {
+            final addOn = food.addOns![i];
+            final addOnName = addOn.name ?? '';
+            final addOnQuantity = addOn.quantity ?? 0;
+            final addOnPrice = addOn.price ?? 0.0;
+            addons += '${addOnName} (${addOnQuantity})';
+            // baseAddon = baseAddon + (addOnPrice * addOnQuantity);
+            addonsTotal = addonsTotal + (addOnPrice * addOnQuantity);
+          }
+        }
+        String foodName = ('${food.foodDetails!.name} $variationText')
+            .toString()
+            .replaceAll('-', ' ')
+            .replaceAll(' – ', ' ');
+        bytes += generator.row([
+          // PosColumn(
+          //     text: '${i + 1}.',
+          //     width: getOrderTypeValue('sl',
+          //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+          //     styles: styleFunction(
+          //         align: PosAlign.left,
+          //         name: printConfig.restaurantFoodList!,
+          //         isPaperSize80: paperRoll == 80)),
+          PosColumn(
+            text: '${foodName}',
+            width: getOrderTypeValue('name',
+                isShowDate: isShowDate,
+                isHideSl: true,
+                printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList!,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: 
+            // '${food.quantity}',
+            formatQuantity(food.quantity),
+            width: getOrderTypeValue('qty',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList!,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: food.isComplementary == 1
+                ? '0'
+                : '${(food.unitPrice! + baseVariation).toInt()}',
+            // text: '${(food.price) + (variationTotal) + (addonsTotal)}',
+            width: getOrderTypeValue('price',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList!,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: food.isComplementary == 1
+                ? '0'
+                : '${((food.unitPrice! * food.quantity!) + variationTotal).toInt()}',
+            // text: '${(food.price) + (variationTotal) + (addonsTotal)}',
+            width: getOrderTypeValue('total',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.right,
+                name: printConfig.restaurantFoodList!,
+                isPaperSize80: paperRoll == 80),
+          ),
+          if (isShowDate && paperRoll == 80)
+            PosColumn(
+              text:
+                  '${DateFormat('dd-MMM').format(DateTime.parse(food.createdAt!))}',
+              width: getOrderTypeValue('date',
+                  isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+              styles: styleFunction(
+                  align: PosAlign.right,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80),
+            ),
+        ]);
+        if (addons != '' && addonsTotal != 0) {
+          // bytes += generator.hr(ch: '....');
+          bytes += generator.row([
+            // PosColumn(
+            //     text: '',
+            //     width: getOrderTypeValue('sl',
+            //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            //     styles: PrinterConfig().foodStyle()),
+            PosColumn(
+              text: 'Add-Ons :$addons',
+              width: getOrderTypeValue('name',
+                  isShowDate: isShowDate,
+                  isHideSl: true,
+                  printerSize80mm: paperRoll == 80),
+              styles: styleFunction(
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('qty',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: PrinterConfig().foodStyle()),
+            PosColumn(
+              text: food.isComplementary == 1
+                  ? '0'
+                  : '${(addonsTotal * food.quantity!).toInt()}',
+              width: getOrderTypeValue('price',
+                  isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+              styles: styleFunction(
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(
+              text: food.isComplementary == 1 ? '0' : '${addonsTotal.toInt()}',
+              width: getOrderTypeValue('total',
+                  isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+              styles: styleFunction(
+                  align: PosAlign.right,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80),
+            ),
+            if (isShowDate && paperRoll == 80)
+              PosColumn(
+                  text: '',
+                  width: getOrderTypeValue('date',
+                      isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                  styles: PrinterConfig().foodStyle()),
+          ]);
+        }
+        if (food.foodStatus != 3 &&
+            orderNote != '' &&
+            food.foodDetails!.name
+                .toString()
+                .toLowerCase()
+                .contains('out of')) {
+          bytes += generator.hr(ch: '....');
+          bytes += generator.row([
+            // PosColumn(
+            //     text: '',
+            //     width: getOrderTypeValue('sl',
+            //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            //     styles: styleFunction(
+            //         align: PosAlign.left,
+            //         name: printConfig.restaurantFoodList!,
+            //         isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: 'Notes  :$orderNote',
+                width: getOrderTypeValue('name',
+                    isShowDate: isShowDate,
+                    isHideSl: true,
+                    printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('qty',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('price',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('total',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            if (isShowDate && paperRoll == 80)
+              PosColumn(
+                  text: '',
+                  width: getOrderTypeValue('date',
+                      isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                  styles: styleFunction(
+                      align: PosAlign.left,
+                      name: printConfig.restaurantFoodList!,
+                      isPaperSize80: paperRoll == 80)),
+          ]);
+        }
+
+        bytes += generator.hr(ch: '....');
+      }
+    }
+// /////////////////       PREPAID BILL DETAIL  ////////////////
+    if (printType == 'billing') {
+      bytes += generator.row([
+        // PosColumn(
+        //     text: 'SL',
+        //     width: getOrderTypeValue('sl',
+        //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+        //     styles: styleFunction(
+        //         align: PosAlign.left,
+        //         name: printConfig.resturantFoodListHeader,
+        //         isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'item_info'.tr,
+            width: getOrderTypeValue('name',
+                isHideSl: true,
+                isShowDate: isShowDate,
+                printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'qty'.tr,
+            width: getOrderTypeValue('qty',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'Price',
+            width: getOrderTypeValue('price',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'Total',
+            width: getOrderTypeValue('total',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.right,
+                name: printConfig.resturantFoodListHeader,
+                isPaperSize80: paperRoll == 80)),
+        if (isShowDate && paperRoll == 80)
+          PosColumn(
+              text: 'Date',
+              width: getOrderTypeValue('date',
+                  isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+              styles: styleFunction(
+                  align: PosAlign.right,
+                  name: printConfig.resturantFoodListHeader,
+                  isPaperSize80: paperRoll == 80)),
+      ]);
+      bytes += generator.hr(ch: '--');
+      for (var i = 0; i < cartList!.length; i++) {
+        CartModel food = cartList[i];
+        String variationText = '';
+        String addons = '';
+
+        double variationTotal = 0;
+        double halfVariationPrice = 0;
+        double baseVariation = 0;
+        // double baseAddon = 0;
+        double addonsTotal = 0;
+
+        if (food.variation.isNotEmpty) {
+          for (int index = 0; index < food.variation.length; index++) {
+            if (food.variation[index].isNotEmpty &&
+                food.variation[index].contains(true)) {
+              variationText +=
+                  '${variationText.isNotEmpty ? ', ' : ''}${food.product.variations![index].name} (';
+
+              for (int i = 0; i < food.variation[index].length; i++) {
+                if (food.variation[index][i]) {
+                  if (food.product.variations![index].name!.toUpperCase() ==
+                      'HALFNHALF') {
+                    if (halfVariationPrice <
+                        (double.parse(food.product.variations![index].values![i]
+                                .optionPrice!) *
+                            food.quantity)) {
+                      baseVariation = double.parse(food
+                          .product.variations![index].values![i].optionPrice!);
+                      halfVariationPrice = (double.parse(food.product
+                              .variations![index].values![i].optionPrice!) *
+                          food.quantity);
+                    }
+                  } else {
+                    variationTotal += (double.parse(food.product
+                            .variations![index].values![i].optionPrice!) *
+                        food.quantity);
+                    baseVariation = baseVariation +
+                        double.parse(food.product.variations![index].values![i]
+                            .optionPrice!);
+                  }
+                  // print(variationTotal);
+                  variationText +=
+                      '${variationText.endsWith('(') ? '' : ', '}${food.product.variations![index].values![i].level}';
+                }
+              }
+              variationText += ')';
+              variationTotal = variationTotal + halfVariationPrice;
+            }
+          }
+        }
+        int index0 = 0;
+        double baseAddon=0;
+        // List<int> ids = [];
+        // List<int> qtys = [];
+        // for (var addOn in food.addOnIds) {
+        //   ids.add(addOn.id);
+        //   qtys.add(addOn.quantity);
+        // }
+        // for (var addOn in food.product.addOns!) {
+        //   if (ids.contains(addOn.id)) {
+        //     addons =
+        //         '$addons${(index0 == 0) ? '' : ',  '}${addOn.name} (${qtys[index0]})';
+        //     baseAddon =
+        //         addonsTotal = addonsTotal + (addOn.price! * qtys[index0]);
+        //     baseAddon = (addOn.price! * qtys[index0]);
+        //     index0 = index0 + 1;
+        //   }
+        // }
+        if (food!.addOns != null) {
+          for (var addOn in food.addOnIds) {
+            if (addOn != null && addOn.quantity != 0) {
+              addons =
+                  '$addons${(index0 == 0) ? '' : ',  '}${addOn.name} (${addOn.quantity})';
+              addonsTotal =
+                  addonsTotal + ((addOn.price ?? 0) * (addOn.quantity ?? 0));
+              baseAddon =baseAddon+ ((addOn.price ?? 0) * (addOn.quantity ?? 0));
+              index0 = index0 + 1;
+            }
+          }
+        }
+        String foodName = ('${food.product.name} $variationText')
+            .toString()
+            .replaceAll('-', ' ')
+            .replaceAll(' – ', ' ');
+        bytes += generator.row([
+          // PosColumn(
+          //     text: '${i + 1}.',
+          //     width: getOrderTypeValue('sl',
+          //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+          //     styles: styleFunction(
+          //         align: PosAlign.left,
+          //         name: printConfig.restaurantFoodList,
+          //         isPaperSize80: paperRoll == 80)),
+          PosColumn(
+            text: '${foodName}',
+            width: getOrderTypeValue('name',
+                isShowDate: isShowDate,
+                isHideSl: true,
+                printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: 
+            // '${food.quantity}',
+            formatQuantity(food.quantity),
+            width: getOrderTypeValue('qty',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: food.isComplementry
+                ? '0'
+                : '${((((food.discountedPrice -baseAddon)) + (Get.find<TableController>().selectedTable == null ? 0 : Get.find<TableController>().selectedTable!.tableNo == 'Take Away' ? (food.product.takeAwayFoodPrice!) : Get.find<TableController>().selectedTable!.tableNo == 'Delivery' ? (food.product.deliveryFoodPrice!) : 0)) ).toInt()}',
+            // text: '${(food.price) + (variationTotal) + (addonsTotal)}',
+            width: getOrderTypeValue('price',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: food.isComplementry
+                ? '0'
+                : '${(((
+                  (food.discountedPrice -  baseAddon) + 
+                  (Get.find<TableController>().selectedTable == null ? 0 : Get.find<TableController>().selectedTable!.tableNo == 'Take Away' ? (food.product.takeAwayFoodPrice! * food.quantity) : Get.find<TableController>().selectedTable!.tableNo == 'Delivery' ? (food.product.deliveryFoodPrice! * food.quantity) : 0))
+                   * food.quantity) ).toInt()}',
+
+            // text: '${(food.price) + (variationTotal) + (addonsTotal)}',
+            width: getOrderTypeValue('total',
+                isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            styles: styleFunction(
+                align: PosAlign.right,
+                name: printConfig.restaurantFoodList,
+                isPaperSize80: paperRoll == 80),
+          ),
+          if (isShowDate && paperRoll == 80)
+            PosColumn(
+              text: '${DateFormat('dd-MMM').format(DateTime.now())}',
+              width: getOrderTypeValue('date',
+                  isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+              styles: styleFunction(
+                  align: PosAlign.right,
+                  name: printConfig.restaurantFoodList,
+                  isPaperSize80: paperRoll == 80),
+            ),
+        ]);
+        if (addons != '' && addonsTotal != 0) {
+          // bytes += generator.hr(ch: '....');
+          bytes += generator.row([
+            // PosColumn(
+            //     text: '',
+            //     width: getOrderTypeValue('sl',
+            //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            //     styles: styleFunction(
+            //         align: PosAlign.left,
+            //         name: printConfig.restaurantFoodList!,
+            //         isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: 'Add-Ons :$addons',
+                width: getOrderTypeValue('name',
+                    isShowDate: isShowDate,
+                    isHideSl: true,
+                    printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('qty',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: food.isComplementry ? '0' : '${addonsTotal.toInt()}',
+                width: getOrderTypeValue('price',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: food.isComplementry
+                    ? '0'
+                    : '${(addonsTotal * food.quantity).toInt()}',
+                width: getOrderTypeValue('total',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.right,
+                    name: printConfig.restaurantFoodList!,
+                    isPaperSize80: paperRoll == 80)),
+            if (isShowDate && paperRoll == 80)
+              PosColumn(
+                  text: '',
+                  width: getOrderTypeValue('date',
+                      isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                  styles: styleFunction(
+                      align: PosAlign.left,
+                      name: printConfig.restaurantFoodList!,
+                      isPaperSize80: paperRoll == 80)),
+          ]);
+        }
+        if (orderNote != '' &&
+            food.product.name.toString().toLowerCase().contains('out of')) {
+          bytes += generator.hr(ch: '....');
+          bytes += generator.row([
+            // PosColumn(
+            //     text: '',
+            //     width: getOrderTypeValue('sl',
+            //         isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+            //     styles: styleFunction(
+            //         align: PosAlign.left,
+            //         name: printConfig.restaurantFoodList,
+            //         isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: 'Notes  :$orderNote',
+                width: getOrderTypeValue('name',
+                    isShowDate: isShowDate,
+                    isHideSl: true,
+                    printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('qty',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('price',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList,
+                    isPaperSize80: paperRoll == 80)),
+            PosColumn(
+                text: '',
+                width: getOrderTypeValue('total',
+                    isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                styles: styleFunction(
+                    align: PosAlign.left,
+                    name: printConfig.restaurantFoodList,
+                    isPaperSize80: paperRoll == 80)),
+            if (isShowDate && paperRoll == 80)
+              PosColumn(
+                  text: '',
+                  width: getOrderTypeValue('date',
+                      isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
+                  styles: styleFunction(
+                      align: PosAlign.left,
+                      name: printConfig.restaurantFoodList,
+                      isPaperSize80: paperRoll == 80)),
+          ]);
+        }
+
+        bytes += generator.hr(ch: '....');
+      }
+    }
+
+// /////////////////       SWIGGY BILL DETAIL  ////////////////
+
+    if (printType == 'swiggy_bill') {
+      bytes += generator.row([
+        PosColumn(
+            text: 'SL',
+            width: 2,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'Items',
+            width: 6,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'qty'.tr,
+            width: 1,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+        PosColumn(
+            text: 'Price',
+            width: 3,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.resturantFoodListHeader!,
+                isPaperSize80: paperRoll == 80)),
+      ]);
+      bytes += generator.hr(ch: '--');
+      for (var i = 0; i < swiggyOrderList!.length; i++) {
+        OrderFoodDetails food = swiggyOrderList[i];
+        String? addonGroupTitle;
+        String? variationGroupTitle;
+        String addonText = '';
+        String variationText = '';
+
+        for (var addon in food.addOns) {
+          if (addon.group != null) {
+            if (addon.group!.isVariant == true) {
+              // 🔹 Handle Variation
+              variationGroupTitle ??= addon.group!.title ?? '';
+              variationText += "${addon.title}(${addon.quantity ?? 0}), ";
+            } else {
+              // 🔹 Handle Add-on
+              addonGroupTitle ??= addon.group!.title ?? '';
+              addonText += "${addon.title}(${addon.quantity ?? 0}), ";
+            }
+          }
+        }
+        if (addonText.isNotEmpty) {
+          addonText = "${addonText.trim().replaceAll(RegExp(r',$'), '')}";
+          // addonText =
+          //     "$addonGroupTitle (${addonText.trim().replaceAll(RegExp(r',$'), '')})";
+        }
+        if (variationText.isNotEmpty) {
+          variationText =
+              "${variationText.trim().replaceAll(RegExp(r',$'), '')}";
+          // variationText =
+          //     "$variationGroupTitle (${variationText.trim().replaceAll(RegExp(r',$'), '')})";
+        }
+        // if (food.variation.isNotEmpty) {
+        //   variationText += '(';
+        //   List<String> labelList = [];
+        //   for (int j = 0; j < food.variation.length; j++) {
+        //     // variationText +=
+        //     //     '${variationText.isNotEmpty ? ', ' : ''}${food.variation[j].name} (';
+
+        //     if (food.variation[j].values != null) {
+        //       for (var element in food.variation[j].values!) {
+        //         labelList.add(element.level!);
+        //         baseVariation += double.parse(element.optionPrice!);
+        //         variationTotal +=
+        //             (int.parse(element.optionPrice!) * food.quantity);
+        //       }
+        //       // variationText +=
+        //       //     '${variationText.endsWith('(') ? '' : ', '}${labelList.join(',')}';
+        //     }
+
+        //     // variationText += ')';
+        //   }
+        //   variationText += '${labelList.join(',')}';
+        //   variationText += ')';
+        // }
+
+        // for (var i = 0; i < food.addOns.length; i++) {
+        //   addons += '${food.addOns[i].name} (${food.addOns[i].qty})';
+        //   baseAddon = baseAddon + food.addOns[i].price! * food.addOns[i].qty!;
+        //   addonsTotal =
+        //       addonsTotal + (food.addOns[i].price! * food.addOns[i].qty!);
+        // }
+
+        bytes += generator.row([
+          PosColumn(
+              text: '${i + 1}.',
+              width: 2,
+              styles: styleFunction(
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList!,
+                  isPaperSize80: paperRoll == 80)),
+          PosColumn(
+            text: '${food.title} $variationText',
+            width: 6,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList!,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: 
+            // '${food.quantity}',
+            formatQuantity(food.quantity),
+            width: 1,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList!,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '${(food.price).toStringAsFixed(2)}',
+            width: 3,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantFoodList,
+                isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+        if (addonText != '') {
+          // bytes += generator.hr(ch: '....');
+          bytes += generator.row([
+            PosColumn(text: '', width: 2, styles: PrinterConfig().foodStyle()),
+            PosColumn(
+              text: 'Add-Ons :$addonText',
+              width: 6,
+              styles: styleFunction(
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList,
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(text: '', width: 1, styles: PrinterConfig().foodStyle()),
+            PosColumn(
+              text: '',
+              width: 3,
+              styles: styleFunction(
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList,
+                  isPaperSize80: paperRoll == 80),
+            ),
+          ]);
+        }
+        if (food.foodLevelNotes != '') {
+          bytes += generator.hr(ch: '....');
+          bytes += generator.row([
+            PosColumn(text: '', width: 2, styles: PrinterConfig().foodStyle()),
+            PosColumn(
+              text: 'Note :${food.foodLevelNotes}',
+              width: 6,
+              styles: styleFunction(
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList,
+                  isPaperSize80: paperRoll == 80),
+            ),
+            PosColumn(text: '', width: 1, styles: PrinterConfig().foodStyle()),
+            PosColumn(
+              text: '',
+              width: 3,
+              styles: styleFunction(
+                  align: PosAlign.left,
+                  name: printConfig.restaurantFoodList,
+                  isPaperSize80: paperRoll == 80),
+            ),
+          ]);
+        }
+
+        bytes += generator.hr(ch: '....');
+      }
+    }
+    if (orderNote != '') {
+      bytes += generator.text('${'Notes'.tr}:  $orderNote',
+          styles: styleFunction(
+              align: PosAlign.left,
+              name: printConfig.restaurantFoodList,
+              isPaperSize80: paperRoll == 80));
+      bytes += generator.hr(ch: '....');
+    }
+////////////////////////      Bill amount detail    //////////////
+    if (printType == 'bill' ||
+        printType == 'billing' ||
+        printType == 'paid_bill' ||
+        printType == 'swiggy_bill') {
+      if (printType != 'swiggy_bill')
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Item Total ',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.restaurantSubTotal,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+              text:
+                  // '${PriceConverter.convertPrice((orderSubTotal + roomAdvancePay + roomRemainingPay), isHideCurrency: true, asFixed: 2)}',
+                  '${PriceConverter.convertPrice((orderSubTotal ), isHideCurrency: true, asFixed: 2)}',
+              width: 3,
+              styles: styleFunction(
+                  name: printConfig.restaurantSubTotal,
+                  isPaperSize80: paperRoll == 80)),
+        ]);
+
+      if (roomAdvancePay != 0)
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Room Advance',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+              text:
+                  '${PriceConverter.convertPrice(roomAdvancePay, isHideCurrency: true, asFixed: 2)}',
+              width: 3,
+              styles: styleFunction(
+                  name: printConfig.gstParcent,
+                  isPaperSize80: paperRoll == 80)),
+        ]);
+      if (roomRemainingPay != 0)
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Room Pending',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+              text:
+                  '${PriceConverter.convertPrice(roomRemainingPay, isHideCurrency: true, asFixed: 2)}',
+              width: 3,
+              styles: styleFunction(
+                  name: printConfig.gstParcent,
+                  isPaperSize80: paperRoll == 80)),
+        ]);
+      if (discount != 0)
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: couponCode != ''
+                ? 'Coupon Discount'
+                : '${profileModel.restaurants!.first.discountText} ',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(discount,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      if (couponDiscount != 0)
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Coupon Discount',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(couponDiscount,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      if (couponCode != '')
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Coupon Code',
+            width: 4,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+            text: couponCode,
+            width: 6,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      if (loyaltyUsed != 0) {
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Used Loyalty Point',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(loyaltyUsed,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      }
+      if (tips != 0)
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Add Tips ',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.tip, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(tips,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.tip, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      if (serviceChargeAmount != 0)
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text:
+                '${Get.find<AuthController>().profileModel!.restaurants!.first.settings!.serviceChrgTaxt ?? 'Service Charge'} ',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.serviceCharge,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(serviceChargeAmount,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.serviceCharge,
+                isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      if (deliveryCharge != 0)
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Delivery Charge',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.deliveryCharge,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+              text: PriceConverter.convertPrice(deliveryCharge,
+                  isHideCurrency: true, asFixed: 2),
+              width: 3,
+              styles: styleFunction(
+                  name: printConfig.deliveryCharge,
+                  isPaperSize80: paperRoll == 80)),
+        ]);
+        if (packingCharge != 0)
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Packing Charge',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.deliveryCharge,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+              text: PriceConverter.convertPrice(packingCharge,
+                  isHideCurrency: true, asFixed: 2),
+              width: 3,
+              styles: styleFunction(
+                  name: printConfig.deliveryCharge,
+                  isPaperSize80: paperRoll == 80)),
+        ]);
+
+      if (charge != 0)
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Delivery & other charges',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.deliveryCharge,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+              text: PriceConverter.convertPrice(charge,
+                  isHideCurrency: true, asFixed: 2),
+              width: 3,
+              styles: styleFunction(
+                  name: printConfig.deliveryCharge,
+                  isPaperSize80: paperRoll == 80)),
+        ]);
+    bytes += generator.row([
+        PosColumn(
+          text: '',
+          width: 1,
+          styles: PosStyles(
+            align: PosAlign.center,
+          ),
+        ),
+        PosColumn(
+          text: 'Sub Total ',
+          width: 7,
+          styles: styleFunction(
+              name: printConfig.restaurantSubTotal,
+              isPaperSize80: paperRoll == 80),
+        ),
+        PosColumn(
+          text: '',
+          width: 1,
+          styles: PosStyles(align: PosAlign.center),
+        ),
+        PosColumn(
+            text:
+                '${PriceConverter.convertPrice((subTotalWithoutTax ), isHideCurrency: true, asFixed: 2)}',
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.restaurantSubTotal,
+                isPaperSize80: paperRoll == 80)),
+      ]);
+      if (swiggyTax != 0) {
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+              text: 'Total Tax',
+              width: 7,
+              styles: styleFunction(
+                  name: printConfig.gstParcent,
+                  isPaperSize80: paperRoll == 80)),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: styleFunction(
+                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(swiggyTax,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      }
+      if (gstAmount != 0) {
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+              text: 'CGST(2.5%)',
+              width: 7,
+              styles: styleFunction(
+                  name: printConfig.gstParcent,
+                  isPaperSize80: paperRoll == 80)),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: styleFunction(
+                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(gstAmount / 2,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      }
+      if (gstAmount != 0) {
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'SGST(2.5%)',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(gstAmount / 2,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      }
+      if (vatAmount != 0) {
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'VAT ',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.vatParcent, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(vatAmount,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.vatParcent, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      }
+      if (walletUsed != 0) {
+        bytes += generator.row([
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(
+              align: PosAlign.center,
+            ),
+          ),
+          PosColumn(
+            text: 'Used Wallet Amount',
+            width: 7,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: '',
+            width: 1,
+            styles: PosStyles(align: PosAlign.center),
+          ),
+          PosColumn(
+            text: PriceConverter.convertPrice(walletUsed,
+                isHideCurrency: true, asFixed: 2),
+            width: 3,
+            styles: styleFunction(
+                name: printConfig.discount, isPaperSize80: paperRoll == 80),
+          ),
+        ]);
+      }
+
+      bytes += generator.hr(ch: '....');
+      if (paymentType != '')
+        bytes += generator.row([
+          PosColumn(
+            text: 'Payment by : $paymentType',
+            width: 6,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantSubTotal,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: 'Total: ' +
+                (profileModel.restaurants!.first.isTotalRound == 'Yes'
+                    ? '${getRoundUpValue( value: (grandTotal))}'
+                    : ('${PriceConverter.convertPrice((grandTotal), isHideCurrency: true, asFixed: 2)}')),
+            width: 6,
+            styles: styleFunction(
+                align: PosAlign.right,
+                name: printConfig.restaurantTotalAmount,
+                isPaperSize80: paperRoll == 80),
+          )
+        ]);
+      if (paymentType == '')
+        bytes += generator.text(
+          'Total: ' +
+              (profileModel.restaurants!.first.isTotalRound == 'Yes'
+                  ? '${getRoundUpValue( value: (grandTotal))}'
+                  : ('${PriceConverter.convertPrice((grandTotal), isHideCurrency: true, asFixed: 2)}')),
+          styles: styleFunction(
+              name: printConfig.restaurantTotalAmount,
+              isPaperSize80: paperRoll == 80),
+        );
+      if (printType == 'swiggy_bill' ||
+          (orderType == 'delivery' && printType != 'paid_bill')) {
+        bytes += generator.hr(ch: '....');
+
+        bytes += generator.text('Name: $deliveryCustName',
+            styles: styleFunction(
+                name: printConfig.deliveryAddress,
+                isPaperSize80: paperRoll == 80));
+        bytes += generator.text('Phone: $deliveryCustPhone',
+            styles: styleFunction(
+                name: printConfig.deliveryAddress,
+                isPaperSize80: paperRoll == 80));
+        bytes += generator.text('Address Type: $deliveryAddressType',
+            styles: styleFunction(
+                name: printConfig.deliveryAddress,
+                isPaperSize80: paperRoll == 80));
+        bytes += generator.text('Address: $deliveryCustAddress',
+            styles: styleFunction(
+                name: printConfig.deliveryAddress,
+                isPaperSize80: paperRoll == 80));
+        bytes += generator.text('Pincode: $deliveryCustPincode',
+            styles: styleFunction(
+                name: printConfig.deliveryAddress,
+                isPaperSize80: paperRoll == 80));
+        // bytes += generator.hr(ch: '....');
+      }
+      bytes += generator.hr(ch: '....');
+      if ((printType == 'bill' || printType == 'billing') &&
+          profileModel.restaurants!.first.upiId != null &&
+          profileModel.restaurants!.first.upiId != '' &&
+          GetPlatform.isAndroid) {
+        const double qrSize = 170;
+        try {
+          final uiImg = await QrPainter(
+            data: profileModel.restaurants!.first.dynamicUpiValue == 'No'
+                ? 'upi://pay?pa=${profileModel.restaurants!.first.upiId}&pn=&am=0&tn='
+                : 'upi://pay?pa=${profileModel.restaurants!.first.upiId}&pn=&am=${profileModel.restaurants!.first.isTotalRound == 'Yes' ? (getRoundUpValue( value: (grandTotal))) : (grandTotal).toStringAsFixed(2)}&tn=',
+            version: QrVersions.auto,
+            gapless: false,
+          ).toImageData(qrSize);
+          final dir = await getTemporaryDirectory();
+          final pathName = '${dir.path}/qr_tmp.png';
+          final qrFile = File(pathName);
+          final imgFile =
+              await qrFile.writeAsBytes(uiImg!.buffer.asUint8List());
+          final img = prefix.decodeImage(imgFile.readAsBytesSync());
+
+          bytes += generator.text(
+            'Scan to pay',
+            styles: styleFunction(
+                name: printConfig.resturantScanToPay,
+                isPaperSize80: paperRoll == 80),
+          );
+
+          bytes += generator.feed(1);
+          bytes += generator.image(img!);
+          bytes += generator.feed(1);
+
+          // bytes += generator.feed(1);
+        } catch (e) {
+          print(e);
+        }
+      }
+
+      if (profileModel.restaurants!.first.feedback == 'Yes' &&
+          printType != 'swiggy_bill' &&
+          GetPlatform.isAndroid) {
+        try {
+          const double qrSize = 170;
+          final uiImg = await QrPainter(
+            data: profileModel.restaurants?.first.feedbackUrl == ''
+                ? '${AppConstants.FEEDBACK_BASE_URL}?orderId=$orderId'
+                : '${profileModel.restaurants?.first.feedbackUrl ?? ''}',
+            version: QrVersions.auto,
+            gapless: false,
+          ).toImageData(qrSize);
+          final dir = await getTemporaryDirectory();
+          final pathName = '${dir.path}/qr_tmp.png';
+          final qrFile = File(pathName);
+          final imgFile =
+              await qrFile.writeAsBytes(uiImg!.buffer.asUint8List());
+          final img = prefix.decodeImage(imgFile.readAsBytesSync());
+
+          bytes += generator.text('Scan to provide feedback',
+              styles: styleFunction(
+                  name: printConfig.resturantScanToFeedback,
+                  isPaperSize80: paperRoll == 80));
+
+          bytes += generator.feed(1);
+          bytes += generator.image(img!);
+          bytes += generator.feed(1);
+        } catch (e) {
+          print(e);
+        }
+      }
+      if (profileModel.termsCondition != null &&
+          profileModel.termsCondition!.isNotEmpty) {
+        bytes += generator.text(
+          'Terms & Condition',
+          styles: styleFunction(
+              align: PosAlign.left,
+              name: printConfig.poweredByMygenie,
+              isPaperSize80: paperRoll == 80),
+        );
+        for (var i = 0; i < profileModel.termsCondition!.length; i++) {
+          bytes += generator.text(
+            '${profileModel.termsCondition?[i] ?? ''}',
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.poweredByMygenie,
+                isPaperSize80: paperRoll == 80),
+          );
+        }
+      }
+      if (profileModel.restaurants!.first.footerTextBill != '') {
+        bytes += generator.text(
+          profileModel.restaurants!.first.footerTextBill!,
+          styles: styleFunction(
+              name: printConfig.poweredByMygenie,
+              isPaperSize80: paperRoll == 80),
+        );
+      }
+    }
+    bytes += generator.text(
+      'Powered by MyGenie',
+      styles: styleFunction(
+          name: printConfig.poweredByMygenie, isPaperSize80: paperRoll == 80),
+    );
+    bytes += generator.cut();
+    bytes += generator.beep(n: 3, duration: PosBeepDuration.beep200ms);
+
+    return bytes;
+  }
+
+  int getOrderTypeValue(String field,
+      {bool isShowDate = false,
+      bool printerSize80mm = false,
+      bool isHideSl = false}) {
+    switch (field) {
+      case 'sl':
+        return 1;
+      case 'name':
+        return printerSize80mm && isShowDate
+            ? isHideSl
+                ? 5
+                : 4
+            : isHideSl
+                ? 6
+                : 5;
+      case 'qty':
+        return 1;
+      case 'price':
+        return 2;
+      case 'total':
+        return printerSize80mm && isShowDate ? 2 : 3;
+      case 'date':
+        return 2;
+      default:
+        return 2;
+    }
+  }
+
+  PosTextSize fonstSize(String size) {
+    switch (size) {
+      case '1':
+        return PosTextSize.size1;
+      case '2':
+        return PosTextSize.size2;
+      case '3':
+        return PosTextSize.size3;
+      case '4':
+        return PosTextSize.size4;
+      case '5':
+        return PosTextSize.size5;
+      case '6':
+        return PosTextSize.size6;
+      case '7':
+        return PosTextSize.size7;
+      case '8':
+        return PosTextSize.size8;
+      default:
+        return PosTextSize.size1;
+    }
+  }
+
+  PosStyles styleFunction(
+      {String? name,
+      bool isPaperSize80 = false,
+      bool isUnderline = false,
+      PosAlign align = PosAlign.center}) {
+    return PosStyles(
+      align: align,
+      underline: isUnderline,
+      fontType: isPaperSize80 ? PosFontType.fontA : PosFontType.fontB,
+      bold: name!.split(',').last == 'true',
+      height: fonstSize(name.split(',').first),
+      width: fonstSize(name.split(',')[1]),
+    );
+  }
+}
+
+String formatQuantity(num? value) {
+  return (value ?? 0)
+      .toStringAsFixed(3)
+      .replaceFirst(RegExp(r'\.?0+$'), '');
+}

@@ -1,0 +1,18 @@
+name: ios_ble_printer
+description: Native CoreBluetooth (BLE) ESC/POS transport for iOS and iPadOS. Sends bytes that the app has already generated; it does not build receipts.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      ios:
+        pluginClass: IosBlePrinterPlugin

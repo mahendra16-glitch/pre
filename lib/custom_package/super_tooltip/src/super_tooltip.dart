@@ -1,0 +1,482 @@
+import 'dart:ui';
+
+import 'package:mygenie_restaurant/custom_package/super_tooltip/src/utils.dart';
+import 'package:flutter/material.dart' hide TooltipPositionDelegate;
+
+import 'bubble_shape.dart';
+import 'enums.dart';
+import 'shape_overlay.dart';
+import 'super_tooltip_controller.dart';
+import 'tooltip_position_delegate.dart';
+
+class SuperTooltip extends StatefulWidget {
+  final Widget content;
+  final TooltipDirection popupDirection;
+  final SuperTooltipController controller;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onShow;
+  final VoidCallback? onHide;
+  final bool snapsFarAwayVertically;
+  final bool snapsFarAwayHorizontally;
+  final bool hasShadow;
+  final Color? shadowColor;
+  final double? shadowBlurRadius;
+  final double? shadowSpreadRadius;
+  final Offset? shadowOffset;
+  final double? top, right, bottom, left;
+  final bool showCloseButton;
+  final CloseButtonType closeButtonType;
+  final Color? closeButtonColor;
+  final double? closeButtonSize;
+  final double minimumOutsideMargin;
+  final double verticalOffset;
+  final Widget child;
+  final Color borderColor;
+  final BoxConstraints constraints;
+  final Color? backgroundColor;
+  final Decoration? decoration;
+  final double elevation;
+  final Duration fadeInDuration;
+  final Duration fadeOutDuration;
+  final double arrowLength;
+  final double arrowBaseWidth;
+  final double arrowTipDistance;
+  final double borderRadius;
+  final double borderWidth;
+  final bool showBarrier;
+  final Color? barrierColor;
+  final Rect? touchThroughArea;
+  final ClipAreaShape touchThroughAreaShape;
+  final double touchThroughAreaCornerRadius;
+  final EdgeInsetsGeometry overlayDimensions;
+  final EdgeInsetsGeometry bubbleDimensions;
+  final bool hideTooltipOnTap;
+  final bool hideTooltipOnBarrierTap;
+
+  //filter
+  final bool showDropBoxFilter;
+  final double sigmaX;
+  final double sigmaY;
+
+  const SuperTooltip({
+    super.key,
+    required this.content,
+    this.popupDirection = TooltipDirection.down,
+    required this.controller,
+    this.onLongPress,
+    this.onShow,
+    this.onHide,
+    this.showCloseButton = false,
+    this.closeButtonType = CloseButtonType.inside,
+    this.closeButtonColor,
+    this.closeButtonSize,
+    this.showBarrier = true,
+    this.barrierColor,
+    this.snapsFarAwayVertically = false,
+    this.snapsFarAwayHorizontally = false,
+    this.hasShadow = true,
+    this.shadowColor,
+    this.shadowBlurRadius,
+    this.shadowSpreadRadius,
+    this.shadowOffset,
+    this.top,
+    this.right,
+    this.bottom,
+    this.left,
+    this.minimumOutsideMargin = 20.0,
+    this.verticalOffset = 0.0,
+    this.elevation = 0.0,
+    this.backgroundColor,
+    this.decoration,
+    required this.child,
+    this.borderColor = Colors.black,
+    this.constraints = const BoxConstraints(
+      minHeight: 0.0,
+      maxHeight: double.infinity,
+      minWidth: 0.0,
+      maxWidth: double.infinity,
+    ),
+    this.fadeInDuration = const Duration(milliseconds: 150),
+    this.fadeOutDuration = const Duration(milliseconds: 0),
+    this.arrowLength = 20.0,
+    this.arrowBaseWidth = 20.0,
+    this.arrowTipDistance = 2.0,
+    this.touchThroughAreaShape = ClipAreaShape.oval,
+    this.touchThroughAreaCornerRadius = 5.0,
+    this.touchThroughArea,
+    this.borderWidth = 0.0,
+    this.borderRadius = 10.0,
+    this.overlayDimensions = const EdgeInsets.all(0),
+    this.bubbleDimensions = const EdgeInsets.all(0),
+    this.hideTooltipOnTap = false,
+    this.sigmaX = 5.0,
+    this.sigmaY = 5.0,
+    this.showDropBoxFilter = false,
+    this.hideTooltipOnBarrierTap = true,
+  })  : assert(showDropBoxFilter ? showBarrier : true,
+            'showDropBoxFilter or showBarrier can\'t be false'),
+        super();
+
+  static const Key insideCloseButtonKey = Key("InsideCloseButtonKey");
+  static const Key outsideCloseButtonKey = Key("OutsideCloseButtonKey");
+  static const Key barrierKey = Key("barrierKey");
+  static const Key bubbleKey = Key("bubbleKey");
+
+  @override
+  State createState() => _SuperTooltipState();
+}
+
+class _SuperTooltipState extends State<SuperTooltip>
+    with SingleTickerProviderStateMixin {
+  final LayerLink _layerLink = LayerLink();
+  late AnimationController _animationController;
+  late SuperTooltipController _superTooltipController;
+  OverlayEntry? _entry;
+  OverlayEntry? _barrierEntry;
+  OverlayEntry? blur;
+
+  late bool showCloseButton;
+  late CloseButtonType closeButtonType;
+  late Color closeButtonColor;
+  late double closeButtonSize;
+  late bool showBarrier;
+  late Color barrierColor;
+  late bool hasShadow;
+  late Color shadowColor;
+  late double shadowBlurRadius;
+  late double shadowSpreadRadius;
+  late Offset shadowOffset;
+  late bool showBlur;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: widget.fadeInDuration,
+      reverseDuration: widget.fadeOutDuration,
+      vsync: this,
+    );
+    _superTooltipController = widget.controller;
+    _superTooltipController.addListener(_onChangeNotifier);
+  }
+
+  @override
+  void didUpdateWidget(SuperTooltip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_superTooltipController != widget.controller) {
+      _superTooltipController.removeListener(_onChangeNotifier);
+      _superTooltipController = widget.controller;
+      _superTooltipController.addListener(_onChangeNotifier);
+    }
+  }
+
+  @override
+  void dispose() {
+    _removeEntries();
+    _superTooltipController.removeListener(_onChangeNotifier);
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    showCloseButton = widget.showCloseButton;
+    closeButtonType = widget.closeButtonType;
+    closeButtonColor = widget.closeButtonColor ?? Colors.black;
+    closeButtonSize = widget.closeButtonSize ?? 30.0;
+    showBarrier = widget.showBarrier;
+    barrierColor = widget.barrierColor ?? Colors.black54;
+    hasShadow = widget.hasShadow;
+    shadowColor = widget.shadowColor ?? Colors.black54;
+    shadowBlurRadius = widget.shadowBlurRadius ?? 10.0;
+    shadowSpreadRadius = widget.shadowSpreadRadius ?? 5.0;
+    shadowOffset = widget.shadowOffset ?? Offset.zero;
+    showBlur = widget.showDropBoxFilter;
+
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: GestureDetector(
+        onTap: _superTooltipController.showTooltip,
+        onLongPress: widget.onLongPress,
+        child: widget.child,
+      ),
+    );
+  }
+
+  void _onChangeNotifier() {
+    switch (_superTooltipController.event) {
+      case Event.show:
+        _showTooltip();
+        break;
+      case Event.hide:
+        _hideTooltip();
+        break;
+    }
+  }
+
+  void _createOverlayEntries() {
+    final renderBox = context.findRenderObject() as RenderBox;
+
+    final overlayState = Overlay.of(context, rootOverlay: true);
+    RenderBox? overlay;
+
+    overlay = overlayState.context.findRenderObject() as RenderBox?;
+
+    final size = renderBox.size;
+    final target = renderBox.localToGlobal(size.center(Offset.zero));
+    final animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.fastOutSlowIn,
+    );
+    final offsetToTarget = Offset(
+      -target.dx + size.width / 2,
+      -target.dy + size.height / 2,
+    );
+    final backgroundColor =
+        widget.backgroundColor ?? Theme.of(context).cardColor;
+
+    var constraints = widget.constraints;
+    var preferredDirection = widget.popupDirection;
+    var left = widget.left;
+    var right = widget.right;
+    var top = widget.top;
+    var bottom = widget.bottom;
+
+    if (widget.snapsFarAwayVertically && overlay != null) {
+      constraints = constraints.copyWith(maxHeight: null);
+      left = right = 0.0;
+
+      if (target.dy > overlay.size.center(Offset.zero).dy) {
+        preferredDirection = TooltipDirection.up;
+        top = 0.0;
+      } else {
+        preferredDirection = TooltipDirection.down;
+        bottom = 0.0;
+      }
+    } else if (widget.snapsFarAwayHorizontally && overlay != null) {
+      constraints = constraints.copyWith(maxHeight: null);
+      top = bottom = 0.0;
+
+      if (target.dx < overlay.size.center(Offset.zero).dx) {
+        preferredDirection = TooltipDirection.right;
+        right = 0.0;
+      } else {
+        preferredDirection = TooltipDirection.left;
+        left = 0.0;
+      }
+    }
+
+    _barrierEntry = showBarrier
+        ? OverlayEntry(
+            builder: (context) => FadeTransition(
+              opacity: animation,
+              child: GestureDetector(
+                onTap: widget.hideTooltipOnBarrierTap
+                    ? _superTooltipController.hideTooltip
+                    : null,
+                child: Container(
+                  key: SuperTooltip.barrierKey,
+                  decoration: ShapeDecoration(
+                    shape: ShapeOverlay(
+                      clipAreaCornerRadius: widget.touchThroughAreaCornerRadius,
+                      clipAreaShape: widget.touchThroughAreaShape,
+                      clipRect: widget.touchThroughArea,
+                      barrierColor: barrierColor,
+                      overlayDimensions: widget.overlayDimensions,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        : null;
+
+    blur = showBlur
+        ? OverlayEntry(
+            builder: (BuildContext context) => FadeTransition(
+              opacity: animation,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: widget.sigmaX,
+                  sigmaY: widget.sigmaY,
+                ),
+                child: Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              ),
+            ),
+          )
+        : null;
+    _entry = OverlayEntry(
+      builder: (BuildContext context) => FadeTransition(
+        opacity: animation,
+        child: Center(
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: offsetToTarget,
+            child: CustomSingleChildLayout(
+              delegate: TooltipPositionDelegate(
+                preferredDirection: preferredDirection,
+                constraints: constraints,
+                top: top,
+                bottom: bottom,
+                left: left,
+                right: right,
+                target: target,
+                overlay: overlay,
+                margin: widget.minimumOutsideMargin,
+                snapsFarAwayHorizontally: widget.snapsFarAwayHorizontally,
+                snapsFarAwayVertically: widget.snapsFarAwayVertically,
+              ),
+              child: Stack(
+                fit: StackFit.passthrough,
+                children: <Widget>[
+                  Material(
+                    color: Colors.transparent,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (widget.hideTooltipOnTap) {
+                          _superTooltipController.hideTooltip();
+                        }
+                      },
+                      child: Container(
+                        key: SuperTooltip.bubbleKey,
+                        margin: SuperUtils.getTooltipMargin(
+                          arrowLength: widget.arrowLength,
+                          arrowTipDistance: widget.arrowTipDistance,
+                          closeButtonSize: closeButtonSize,
+                          preferredDirection: preferredDirection,
+                          closeButtonType: closeButtonType,
+                          showCloseButton: showCloseButton,
+                        ),
+                        padding: SuperUtils.getTooltipPadding(
+                          closeButtonSize: closeButtonSize,
+                          closeButtonType: closeButtonType,
+                          showCloseButton: showCloseButton,
+                        ),
+                        decoration: widget.decoration ??
+                            ShapeDecoration(
+                              color: backgroundColor,
+                              shadows: hasShadow
+                                  ? <BoxShadow>[
+                                      BoxShadow(
+                                        blurRadius: shadowBlurRadius,
+                                        spreadRadius: shadowSpreadRadius,
+                                        color: shadowColor,
+                                        offset: shadowOffset,
+                                      ),
+                                    ]
+                                  : null,
+                              shape: BubbleShape(
+                                arrowBaseWidth: widget.arrowBaseWidth,
+                                arrowTipDistance: widget.arrowTipDistance,
+                                borderColor: widget.borderColor,
+                                borderRadius: widget.borderRadius,
+                                borderWidth: widget.borderWidth,
+                                bottom: bottom ?? 0.0,
+                                left: left ?? 0.0,
+                                preferredDirection: preferredDirection,
+                                right: right ?? 0.0,
+                                target: target,
+                                top: top ?? 0.0,
+                                bubbleDimensions: widget.bubbleDimensions,
+                              ),
+                            ),
+                        child: widget.content,
+                      ),
+                    ),
+                  ),
+                  _buildCloseButton(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlayState.insertAll([
+      if (showBlur && blur != null) blur!,
+      if (showBarrier && _barrierEntry != null) _barrierEntry!,
+      if (_entry != null) _entry!,
+    ]);
+  }
+
+  void _showTooltip() async {
+    widget.onShow?.call();
+
+    _createOverlayEntries();
+
+    await _animationController
+        .forward()
+        .whenComplete(_superTooltipController.complete);
+  }
+
+  void _removeEntries() {
+    _entry?.remove();
+    _entry = null;
+    _barrierEntry?.remove();
+    _barrierEntry = null;
+    blur?.remove();
+    blur = null;
+  }
+
+  void _hideTooltip() async {
+    widget.onHide?.call();
+    await _animationController
+        .reverse()
+        .whenComplete(_superTooltipController.complete);
+
+    _removeEntries();
+  }
+
+  Widget _buildCloseButton() {
+    if (!showCloseButton) {
+      return const SizedBox.shrink();
+    }
+
+    double right = 0;
+    double top = 0;
+
+    switch (widget.popupDirection) {
+      case TooltipDirection.left:
+        right = widget.arrowLength + widget.arrowTipDistance + 3.0;
+        top = closeButtonType == CloseButtonType.inside ? 2.0 : 0.0;
+        break;
+      case TooltipDirection.right:
+      case TooltipDirection.up:
+        right = 5.0;
+        top = closeButtonType == CloseButtonType.inside ? 2.0 : 0.0;
+        break;
+      case TooltipDirection.down:
+        right = 2.0;
+        top = closeButtonType == CloseButtonType.inside
+            ? widget.arrowLength + widget.arrowTipDistance + 2.0
+            : 0.0;
+        break;
+      default:
+        throw AssertionError(widget.popupDirection);
+    }
+
+    return Positioned(
+      right: right,
+      top: top,
+      child: Material(
+        color: Colors.transparent,
+        child: IconButton(
+          key: closeButtonType == CloseButtonType.inside
+              ? SuperTooltip.insideCloseButtonKey
+              : SuperTooltip.outsideCloseButtonKey,
+          icon: Icon(
+            Icons.close_outlined,
+            size: closeButtonSize,
+            color: closeButtonColor,
+          ),
+          onPressed: () async => await widget.controller.hideTooltip(),
+        ),
+      ),
+    );
+  }
+}

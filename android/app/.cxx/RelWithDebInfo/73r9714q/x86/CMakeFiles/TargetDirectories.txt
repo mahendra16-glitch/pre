@@ -1,0 +1,2 @@
+/Users/harsh/Desktop/Live/MygenieRestaurantApp/android/app/.cxx/RelWithDebInfo/73r9714q/x86/CMakeFiles/edit_cache.dir
+/Users/harsh/Desktop/Live/MygenieRestaurantApp/android/app/.cxx/RelWithDebInfo/73r9714q/x86/CMakeFiles/rebuild_cache.dir

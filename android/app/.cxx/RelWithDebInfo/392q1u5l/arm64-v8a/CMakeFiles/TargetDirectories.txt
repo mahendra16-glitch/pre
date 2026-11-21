@@ -1,0 +1,2 @@
+C:/Users/pm873/Desktop/frontendApp_lastedsdk/MygenieRestaurantApp/android/app/.cxx/RelWithDebInfo/392q1u5l/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Users/pm873/Desktop/frontendApp_lastedsdk/MygenieRestaurantApp/android/app/.cxx/RelWithDebInfo/392q1u5l/arm64-v8a/CMakeFiles/rebuild_cache.dir

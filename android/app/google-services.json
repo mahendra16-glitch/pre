@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "969625631640",
+    "project_id": "mygenie-restaurant",
+    "storage_bucket": "mygenie-restaurant.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:969625631640:android:fbae0520b8ded1288e09ed",
+        "android_client_info": {
+          "package_name": "com.mygenie.online"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2kd9JVF3kzJODw-Sds3Niw2TfRXL5vxc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
