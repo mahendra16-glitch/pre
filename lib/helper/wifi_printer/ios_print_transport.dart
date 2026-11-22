@@ -36,6 +36,7 @@ class IosPrintTransport {
   static IosPrintRoute _route = IosPrintRoute.existingBluetooth;
   static WifiPrinterSession? _session;
   static String? _bleId;
+  static String? _lastConnectedAddress;
   static Object? lastError;
   static DateTime? _lastHintShown;
 
@@ -79,14 +80,16 @@ class IosPrintTransport {
       }
     }
 
+    final trimmedAddress = macPrinterAddress.trim();
+
     // On iOS a Bluetooth printer is identified by a UUID, not a MAC address.
     // print_bluetooth_thermal force-unwraps UUID(uuidString:) and crashes the
     // app if given anything else (e.g. "01:01:01:01:01:01" saved on Android),
     // so fail the print with a clear message instead.
-    if (_isIOS && !_iosBluetoothId.hasMatch(macPrinterAddress.trim())) {
+    if (_isIOS && !_iosBluetoothId.hasMatch(trimmedAddress)) {
       _route = IosPrintRoute.existingBluetooth;
       _report(
-          ArgumentError.value(macPrinterAddress, 'macPrinterAddress',
+          ArgumentError.value(trimmedAddress, 'macPrinterAddress',
               'not an iOS Bluetooth printer id'),
           'Printer not set up for this iPhone/iPad. Open Edit Printer, tap Scan and select the printer.');
       return false;
@@ -95,9 +98,9 @@ class IosPrintTransport {
     if (_nativeBleEnabled) {
       _route = IosPrintRoute.nativeBle;
       try {
-        await IosBlePrinter.connect(macPrinterAddress);
-        _bleId = macPrinterAddress;
-        _log('BLE connected $macPrinterAddress');
+        await IosBlePrinter.connect(trimmedAddress);
+        _bleId = trimmedAddress;
+        _log('BLE connected $trimmedAddress');
         return true;
       } on BlePrinterException catch (e) {
         _report(e, e.message);
@@ -109,15 +112,50 @@ class IosPrintTransport {
     }
 
     _route = IosPrintRoute.existingBluetooth;
-    final btResult = await PrintBluetoothThermal.connect(macPrinterAddress: macPrinterAddress);
-    _log('BT connect result=$btResult for address=${macPrinterAddress.substring(0, 8)}...');
-    if (!btResult) {
-      _report(
-        StateError('PrintBluetoothThermal.connect returned false'),
-        'Could not connect to Bluetooth printer. Make sure the printer is paired and connected in iPad Settings → Bluetooth.',
-      );
+
+    // Check if already connected to this printer
+    try {
+      final isAlreadyConnected = await PrintBluetoothThermal.connectionStatus;
+      if (isAlreadyConnected && _lastConnectedAddress == trimmedAddress) {
+        _log('Already connected to Bluetooth printer $trimmedAddress');
+        return true;
+      }
+    } catch (_) {}
+
+    // If connected to a different printer, disconnect it first
+    try {
+      final isAlreadyConnected = await PrintBluetoothThermal.connectionStatus;
+      if (isAlreadyConnected && _lastConnectedAddress != null && _lastConnectedAddress != trimmedAddress) {
+        _log('Switching printer from $_lastConnectedAddress to $trimmedAddress');
+        await PrintBluetoothThermal.disconnect;
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    } catch (_) {}
+
+    _log('Connecting to Bluetooth printer $trimmedAddress...');
+    var btResult = false;
+    try {
+      btResult = await PrintBluetoothThermal.connect(macPrinterAddress: trimmedAddress);
+      if (!btResult) {
+        await Future.delayed(const Duration(milliseconds: 800));
+        btResult = await PrintBluetoothThermal.connect(macPrinterAddress: trimmedAddress);
+      }
+    } catch (e) {
+      _log('Connect exception: $e');
     }
-    return btResult;
+
+    _log('BT connect result=$btResult for address=${trimmedAddress.length >= 8 ? trimmedAddress.substring(0, 8) : trimmedAddress}...');
+    if (btResult) {
+      _lastConnectedAddress = trimmedAddress;
+      await Future.delayed(const Duration(milliseconds: 1200));
+      return true;
+    }
+
+    _report(
+      StateError('PrintBluetoothThermal.connect returned false'),
+      'Could not connect to Bluetooth printer. Make sure the printer is paired and connected in iPad Settings → Bluetooth.',
+    );
+    return false;
   }
 
   static Future<bool> writeBytes(List<int> bytes) async {
@@ -154,7 +192,10 @@ class IosPrintTransport {
     return PrintBluetoothThermal.writeBytes(bytes);
   }
 
-  /// Same shape as `PrintBluetoothThermal.disconnect` (a getter).
+  /// Disconnects active sessions.
+  /// For Wi-Fi: closes socket session so printer is freed for other devices.
+  /// For Bluetooth: keeps the connection alive so subsequent prints are instant
+  /// and the printer does not automatically drop offline.
   static Future<bool> get disconnect async {
     if (_session != null) {
       await _closeWifiSession();
@@ -164,7 +205,14 @@ class IosPrintTransport {
       await _closeNativeBle();
       return true;
     }
-    return PrintBluetoothThermal.disconnect;
+    // KEEP Bluetooth connected to prevent auto-disconnect!
+    return true;
+  }
+
+  /// Explicit force disconnect for Bluetooth when needed.
+  static Future<bool> forceDisconnectBluetooth() async {
+    _lastConnectedAddress = null;
+    return await PrintBluetoothThermal.disconnect;
   }
 
   /// Same shape as `PrintBluetoothThermal.connectionStatus` (a getter).

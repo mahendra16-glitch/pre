@@ -16,6 +16,7 @@ import 'package:mygenie_restaurant/data/model/response/profile_model.dart';
 import 'package:mygenie_restaurant/data/model/response/response_model.dart';
 import 'package:mygenie_restaurant/data/model/response/restaurant_login_model.dart';
 import 'package:mygenie_restaurant/data/repository/auth_repo.dart';
+import 'package:mygenie_restaurant/helper/bluetooth_auto_connect.dart';
 import 'package:mygenie_restaurant/helper/route_helper.dart';
 import 'package:mygenie_restaurant/util/images.dart';
 import 'package:mygenie_restaurant/view/base/confirmation_dialog.dart';
@@ -559,6 +560,7 @@ class AuthController extends GetxController implements GetxService {
 
   // Logout from restaurant (back to admin dashboard)
   Future<void> logoutFromRestaurant() async {
+    BluetoothAutoConnect.instance.stop();
     await authRepo.clearRestaurantSession();
     await authRepo.clearSharedData();
 
@@ -568,6 +570,7 @@ class AuthController extends GetxController implements GetxService {
 
   // Complete admin logout
   Future<void> logoutFromAdmin() async {
+    BluetoothAutoConnect.instance.stop();
     await authRepo.clearAdminSession();
     _adminToken = null;
     _adminEmail = null;
@@ -591,6 +594,7 @@ class AuthController extends GetxController implements GetxService {
     Response response = await authRepo.getProfileInfo();
     if (response.statusCode == 200) {
       _profileModel = ProfileModel.fromJson(response.body);
+      BluetoothAutoConnect.instance.start();
     } else {
       ApiChecker.checkApi(response);
     }
@@ -938,6 +942,7 @@ class AuthController extends GetxController implements GetxService {
     } else {
       final Map<String, dynamic> tempJsonData = jsonDecode(data);
       _profileModel = ProfileModel.fromJson(tempJsonData);
+      BluetoothAutoConnect.instance.start();
     }
   }
 

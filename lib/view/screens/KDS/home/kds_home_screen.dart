@@ -7,6 +7,7 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:mygenie_restaurant/controller/swiggy_controller.dart';
 import 'package:mygenie_restaurant/data/model/body/bluetoothPrinterBody.dart';
 import 'package:mygenie_restaurant/data/model/response/profile_model.dart';
+import 'package:mygenie_restaurant/helper/bluetooth_auto_connect.dart';
 import 'package:mygenie_restaurant/helper/logo_helper.dart';
 import 'package:mygenie_restaurant/util/windows_byte_convert.dart';
 import 'package:mygenie_restaurant/view/base/custom_snackbar.dart';
@@ -156,6 +157,8 @@ class _KDSHomeScreenState extends State<KDSHomeScreen> {
     super.initState();
     initNotification();
     Get.find<KdsController>().clearOrderList();
+    // ✅ Auto-connect to saved Bluetooth printer on iOS when screen loads
+    BluetoothAutoConnect.instance.start();
     if (Get.find<AuthController>().profileModel?.restaurants != null &&
         Get.find<AuthController>().profileModel!.restaurants!.isNotEmpty &&
         Get.find<AuthController>().profileModel!.restaurants!.first.takeAway ==
@@ -225,6 +228,7 @@ class _KDSHomeScreenState extends State<KDSHomeScreen> {
   void dispose() {
     timer?.cancel();
     _subscriptionBtStatus?.cancel();
+    BluetoothAutoConnect.instance.stop(); // ✅ stop auto-connect on screen exit
     homeSocket?.dispose();
     super.dispose();
   }

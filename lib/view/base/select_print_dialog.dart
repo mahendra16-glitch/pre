@@ -513,9 +513,6 @@ class _PrintDialogState extends State<PrintDialog> {
       macPrinterAddress: macAddress,
     );
 
-    // Important delay after connect (iPad)
-    await Future.delayed(const Duration(seconds: 4));
-
     if (!result) {
       isPrinterProccessingList[currentPrintIndex] = false;
       setState(() {});
