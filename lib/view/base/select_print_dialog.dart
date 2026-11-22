@@ -530,14 +530,14 @@ class _PrintDialogState extends State<PrintDialog> {
     }
 
     try {
-      // 🔥 SAME LOGIC AS YOUR FIRST FUNCTION
+      // Send bytes — chunked for 80mm iPad, direct for 58mm / phone
       if (paperSize == 58 || MediaQuery.of(context).size.shortestSide < 570) {
-        // 58mm OR phone → direct write
         await IosPrintTransport.writeBytes(bytes);
       } else {
-        // 80mm + iPad → chunked write
         await _writeBytesForIPad(bytes);
       }
+
+      // Multiple copies
       if (numberOfPrint > 1) {
         for (int i = 1; i < numberOfPrint; i++) {
           await Future.delayed(Duration(
@@ -557,8 +557,10 @@ class _PrintDialogState extends State<PrintDialog> {
               : await _writeBytesForIPad(bytes);
         }
       }
-      // Small wait to allow printer buffer flush
-      Future.delayed(Duration(
+
+      // ✅ FIX 1: properly AWAIT the buffer flush delay so we don't
+      // disconnect while the printer is still processing bytes.
+      await Future.delayed(Duration(
           seconds: bytes.length <= 5850
               ? 2
               : bytes.length <= 7890
@@ -573,20 +575,21 @@ class _PrintDialogState extends State<PrintDialog> {
 
       isPrinterProccessingList[currentPrintIndex] = false;
       isPrintedList[currentPrintIndex] = true;
-
       setState(() {});
     } catch (e) {
       print('Print error: $e');
-
       isPrinterProccessingList[currentPrintIndex] = false;
       setState(() {});
-
       showErrorToast(
         '${Get.find<AuthController>().profileModel!.restaurantPrinterNew![currentPrintIndex].areaName} kot failed',
       );
     } finally {
-      bytes.clear();
+      // ✅ FIX 2: disconnect FIRST, then clear bytes.
+      // Previously bytes.clear() ran before disconnect, leaving the printer
+      // mid-stream on large bills. Also previously disconnect ran immediately
+      // without waiting for the flush delay above, cutting the connection early.
       await IosPrintTransport.disconnect;
+      bytes.clear();
 
       currentPrintIndex++;
       dataCheck();

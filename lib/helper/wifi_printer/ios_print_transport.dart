@@ -109,7 +109,15 @@ class IosPrintTransport {
     }
 
     _route = IosPrintRoute.existingBluetooth;
-    return PrintBluetoothThermal.connect(macPrinterAddress: macPrinterAddress);
+    final btResult = await PrintBluetoothThermal.connect(macPrinterAddress: macPrinterAddress);
+    _log('BT connect result=$btResult for address=${macPrinterAddress.substring(0, 8)}...');
+    if (!btResult) {
+      _report(
+        StateError('PrintBluetoothThermal.connect returned false'),
+        'Could not connect to Bluetooth printer. Make sure the printer is paired and connected in iPad Settings → Bluetooth.',
+      );
+    }
+    return btResult;
   }
 
   static Future<bool> writeBytes(List<int> bytes) async {
