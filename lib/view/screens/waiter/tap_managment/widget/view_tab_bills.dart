@@ -883,7 +883,7 @@ class _ViewTabBillsState extends State<ViewTabBills> {
               if (currentPrintIndex == 0) {
                 await currentBillBytesConvert(setState);
               } else
-                Future.delayed(Duration(seconds: 4), () async {
+                Future.delayed(Duration(seconds: 2), () async {
                   await currentBillBytesConvert(setState);
                 });
 
@@ -894,7 +894,7 @@ class _ViewTabBillsState extends State<ViewTabBills> {
           if (currentPrintIndex == 0) {
             await currentBillBytesConvert(setState);
           } else
-            Future.delayed(Duration(seconds: 4), () async {
+            Future.delayed(Duration(seconds: 2), () async {
               await currentBillBytesConvert(setState);
             });
         }
@@ -1988,7 +1988,7 @@ class _ViewTabBillsState extends State<ViewTabBills> {
             macPrinterAddress:
                 Get.find<AuthController>().profileModel!.macBillPrinterIp!);
 
-        Future.delayed(Duration(seconds: 4), () async {
+        Future.delayed(Duration(seconds: 2), () async {
           if (result) {
             // List<int> ticket = await testTicket();
             await IosPrintTransport.writeBytes(bytes);

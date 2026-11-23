@@ -2590,7 +2590,7 @@ class _PrePaidCollectBillState extends State<PrePaidCollectBill> {
     );
 
     // Small delay after connect (important on iPad)
-    await Future.delayed(const Duration(seconds: 5));
+    await Future.delayed(const Duration(seconds: 2));
 
     if (!result) {
       Get.find<LoadingController>().startLoading(false);
@@ -2638,7 +2638,7 @@ class _PrePaidCollectBillState extends State<PrePaidCollectBill> {
   }
 
   Future<void> _writeBytesForIPad(List<int> bytes) async {
-    const int chunkSize = 180; // 🔥 SAFE for all iPads
+    const int chunkSize = 255; // 🔥 SAFE for all iPads
     const int delayMs = 60; // Required for 80mm stability
 
     for (int i = 0; i < bytes.length; i += chunkSize) {
@@ -2661,7 +2661,7 @@ class _PrePaidCollectBillState extends State<PrePaidCollectBill> {
   //       macPrinterAddress:
   //           Get.find<AuthController>().profileModel!.macBillPrinterIp!);
 
-  //   Future.delayed(Duration(seconds: 3), () async {
+  //   Future.delayed(Duration(seconds: 1), () async {
   //     if (result) {
   //       // List<int> ticket = await testTicket();
   //       await PrintBluetoothThermal.writeBytes(bytes);

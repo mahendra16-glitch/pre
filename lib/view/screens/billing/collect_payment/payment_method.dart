@@ -1618,14 +1618,14 @@ class BillingPaymentMethod extends StatelessWidget {
       }
 
       if (!IosPrintTransport.isWifiActive && bytes.length > 200) {
-        const int chunkSize = 180;
+        const int chunkSize = 255;
         for (int i = 0; i < bytes.length; i += chunkSize) {
           final chunk = bytes.sublist(
             i,
             (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
           );
           await IosPrintTransport.writeBytes(chunk);
-          await Future.delayed(const Duration(milliseconds: 50));
+          await Future.delayed(const Duration(milliseconds: 35));
         }
       } else {
         await IosPrintTransport.writeBytes(bytes);

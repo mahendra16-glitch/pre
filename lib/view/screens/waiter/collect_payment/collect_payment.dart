@@ -4676,7 +4676,7 @@ class _CollectPaymentState extends State<CollectPayment> {
                   await summaryBytesConvert(setState);
                 }
               } else if (currentPrintIndex == 1) {
-                Future.delayed(Duration(seconds: 4), () async {
+                Future.delayed(Duration(seconds: 2), () async {
                   if (GetPlatform.isWindows) {
                     print('dsds');
                     final printers = await Printing.listPrinters();
@@ -4835,7 +4835,7 @@ class _CollectPaymentState extends State<CollectPayment> {
               await summaryBytesConvert(setState);
             }
           } else if (currentPrintIndex == 1) {
-            Future.delayed(Duration(seconds: 4), () async {
+            Future.delayed(Duration(seconds: 2), () async {
               if (GetPlatform.isWindows) {
                 final printers = await Printing.listPrinters();
                 for (var element in printers) {
@@ -5585,7 +5585,7 @@ class _CollectPaymentState extends State<CollectPayment> {
   //           macPrinterAddress:
   //               Get.find<AuthController>().profileModel!.macBillPrinterIp!);
 
-  //       Future.delayed(Duration(seconds: 4), () async {
+  //       Future.delayed(Duration(seconds: 2), () async {
   //         if (result) {
   //           // List<int> ticket = await testTicket();
   //           await PrintBluetoothThermal.writeBytes(bytes);
@@ -5639,7 +5639,7 @@ class _CollectPaymentState extends State<CollectPayment> {
       );
 
       // ✅ iPad needs settle time after connect
-      await Future.delayed(const Duration(seconds: 5));
+      await Future.delayed(const Duration(seconds: 2));
 
       if (!result) {
         Get.find<KdsController>().setProcessing(false);
@@ -5660,7 +5660,7 @@ class _CollectPaymentState extends State<CollectPayment> {
         }
 
         // Small buffer flush delay
-        await Future.delayed(const Duration(seconds: 4));
+        await Future.delayed(const Duration(seconds: 2));
 
         isPrintedList[currentPrintIndex] = true;
         isPrinterProccessingList[currentPrintIndex] = false;
@@ -5684,7 +5684,7 @@ class _CollectPaymentState extends State<CollectPayment> {
   }
 
   Future<void> _writeBytesForIPad(List<int> bytes) async {
-    const int chunkSize = 180; // iPad safe
+    const int chunkSize = 255; // iPad safe
     const int delayMs = 60;
 
     for (int i = 0; i < bytes.length; i += chunkSize) {

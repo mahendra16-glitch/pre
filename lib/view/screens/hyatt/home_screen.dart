@@ -1677,7 +1677,7 @@ class _BuffetHomeScreenState extends State<BuffetHomeScreen> {
       //   });
       // }
 
-      await Future.delayed(Duration(seconds: 3)); // Simulate async processing
+      await Future.delayed(Duration(seconds: 1)); // Simulate async processing
     } finally {
       // After processing, mark as not processing
       isProcessingOrderQueue = false;

@@ -1014,7 +1014,7 @@ class _DeliveyMenHomeScreenState extends State<DeliveyMenHomeScreen> {
             // }
           });
 
-      await Future.delayed(Duration(seconds: 3)); // Simulate async processing
+      await Future.delayed(Duration(seconds: 1)); // Simulate async processing
     } finally {
       // After processing, mark as not processing
       isProcessingOrderQueue = false;
@@ -1688,11 +1688,11 @@ class _DeliveyMenHomeScreenState extends State<DeliveyMenHomeScreen> {
                   .restaurantPrinterNew![currentPrintIndex]
                   .macPrinterIp ??
               '');
-      Future.delayed(Duration(seconds: 4), () async {
+      Future.delayed(Duration(seconds: 2), () async {
         if (result) {
           await IosPrintTransport.writeBytes(bytes);
           // Do not assign null to bytes, just clear if needed or leave as is
-          Future.delayed(Duration(seconds: 4), () async {
+          Future.delayed(Duration(seconds: 2), () async {
             var isDisconnect = await IosPrintTransport.disconnect;
             print('is disconnect $isDisconnect');
             currentPrintIndex = currentPrintIndex + 1;

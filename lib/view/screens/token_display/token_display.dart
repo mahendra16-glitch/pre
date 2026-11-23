@@ -496,7 +496,7 @@ class _TokenDisplayHomeScreenState extends State<TokenDisplayHomeScreen> {
         orderId: '${currentOrder.orderId}',
       );
 
-      await Future.delayed(Duration(seconds: 3)); // Simulate async processing
+      await Future.delayed(Duration(seconds: 1)); // Simulate async processing
     } finally {
       // After processing, mark as not processing
       isProcessingOrderQueue = false;

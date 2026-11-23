@@ -853,7 +853,7 @@ class _PrintOrderBillingDialogState extends State<PrintOrderBillingDialog> {
             .profileModel!
             .restaurantPrinterNew![currentPrintIndex]
             .macPrinterIp!);
-    Future.delayed(Duration(seconds: 4), () async {
+    Future.delayed(Duration(seconds: 2), () async {
       if (result) {
         await IosPrintTransport.writeBytes(bytes);
         Future.delayed(Duration(seconds: 10), () async {

@@ -1606,7 +1606,7 @@
 //         macPrinterAddress:
 //             Get.find<AuthController>().profileModel.macBillPrinterIp);
 
-//     Future.delayed(Duration(seconds: 4), () async {
+//     Future.delayed(Duration(seconds: 2), () async {
 //       if (result) {
 //         // List<int> ticket = await testTicket();
 //         await PrintBluetoothThermal.writeBytes(bytes);

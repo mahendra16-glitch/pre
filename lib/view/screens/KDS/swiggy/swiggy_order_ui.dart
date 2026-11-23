@@ -1155,7 +1155,7 @@ class _KdsSwiggyUIState extends State<KdsSwiggyUI> {
         type: currentOrder.orderType!,
         orderId: '${currentOrder.orderId}',
       );
-      await Future.delayed(const Duration(seconds: 3));
+      await Future.delayed(const Duration(seconds: 1));
     } finally {
       isProcessingOrderQueue = false;
       if (orderIdQueue.isNotEmpty) {

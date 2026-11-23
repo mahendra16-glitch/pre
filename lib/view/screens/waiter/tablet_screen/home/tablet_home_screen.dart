@@ -3565,10 +3565,10 @@
 //               .profileModel!
 //               .restaurantPrinterNew![currentPrintIndex]
 //               .macPrinterIp!);
-//       Future.delayed(Duration(seconds: 4), () async {
+//       Future.delayed(Duration(seconds: 2), () async {
 //         if (result) {
 //           await PrintBluetoothThermal.writeBytes(bytes!);
-//           Future.delayed(Duration(seconds: 4), () async {
+//           Future.delayed(Duration(seconds: 2), () async {
 //             bytes = null;
 //             var isDisconnect = await PrintBluetoothThermal.disconnect;
 //             print('is disconnect $isDisconnect');
@@ -4193,7 +4193,7 @@
 //                   await currentBillBytesConvert();
 //                 }
 //               } else
-//                 Future.delayed(Duration(seconds: 3), () async {
+//                 Future.delayed(Duration(seconds: 1), () async {
 //                   if (GetPlatform.isWindows) {
 //                     final printers = await Printing.listPrinters();
 //                     for (var element in printers) {
@@ -4244,7 +4244,7 @@
 //               await currentBillBytesConvert();
 //             }
 //           } else
-//             Future.delayed(Duration(seconds: 3), () async {
+//             Future.delayed(Duration(seconds: 1), () async {
 //               if (GetPlatform.isWindows) {
 //                 final printers = await Printing.listPrinters();
 //                 for (var element in printers) {
@@ -5134,7 +5134,7 @@
 //             macPrinterAddress:
 //                 Get.find<AuthController>().profileModel!.macBillPrinterIp!);
 
-//         Future.delayed(Duration(seconds: 4), () async {
+//         Future.delayed(Duration(seconds: 2), () async {
 //           if (result) {
 //             // List<int> ticket = await testTicket();
 //             await PrintBluetoothThermal.writeBytes(bytes);
@@ -5439,7 +5439,7 @@
 //         }
 //       }
 
-//       await Future.delayed(Duration(seconds: 3)); // Simulate async processing
+//       await Future.delayed(Duration(seconds: 1)); // Simulate async processing
 //     } finally {
 //       // After processing, mark as not processing
 //       isProcessingOrderQueue = false;

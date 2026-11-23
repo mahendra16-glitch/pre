@@ -10111,7 +10111,7 @@ class _POSCartScreenState extends State<POSCartScreen> {
   //       macPrinterAddress:
   //           Get.find<AuthController>().profileModel!.macBillPrinterIp!);
 
-  //   Future.delayed(Duration(seconds: 3), () async {
+  //   Future.delayed(Duration(seconds: 1), () async {
   //     if (result) {
   //       // List<int> ticket = await testTicket();
   //       await PrintBluetoothThermal.writeBytes(bytes);
@@ -10230,7 +10230,7 @@ class _POSCartScreenState extends State<POSCartScreen> {
   }
 
   Future<void> _writeBytesForIPad(List<int> bytes) async {
-    const int chunkSize = 180; // 🔥 SAFE for all iPads
+    const int chunkSize = 255; // 🔥 SAFE for all iPads
     const int delayMs = 60; // Required for 80mm stability
 
     for (int i = 0; i < bytes.length; i += chunkSize) {

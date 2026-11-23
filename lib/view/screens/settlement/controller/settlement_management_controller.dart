@@ -516,7 +516,7 @@ class SettlementManagementController extends GetxController
           // snackPosition: SnackPosition.BOTTOM,
           backgroundColor: ColorTheme.greenColor,
           colorText: Colors.white,
-          duration: Duration(seconds: 4),
+          duration: Duration(seconds: 2),
         );
 
         await getSettlementRestaurantList();

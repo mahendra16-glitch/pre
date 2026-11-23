@@ -2951,7 +2951,7 @@ class SelectPaymentMethodTab extends StatelessWidget {
             .noOfBillPrint ??
         '1');
 
-    Future.delayed(Duration(seconds: 3), () async {
+    Future.delayed(Duration(seconds: 1), () async {
       if (result) {
         // List<int> ticket = await testTicket();
         await IosPrintTransport.writeBytes(bytes);

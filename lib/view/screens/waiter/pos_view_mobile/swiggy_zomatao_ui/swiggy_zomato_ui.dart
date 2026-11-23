@@ -1412,7 +1412,7 @@ class _SwiggyZomatoUIState extends State<SwiggyZomatoUI> {
         orderId: '${currentOrder.orderId}',
       );
 
-      await Future.delayed(Duration(seconds: 3)); // Simulate async processing
+      await Future.delayed(Duration(seconds: 1)); // Simulate async processing
     } finally {
       // After processing, mark as not processing
       isProcessingOrderQueue = false;
@@ -1835,7 +1835,7 @@ class _SwiggyZomatoUIState extends State<SwiggyZomatoUI> {
         macPrinterAddress:
             Get.find<AuthController>().profileModel!.macBillPrinterIp!);
 
-    Future.delayed(Duration(seconds: 3), () async {
+    Future.delayed(Duration(seconds: 1), () async {
       if (result) {
         // List<int> ticket = await testTicket();
         await IosPrintTransport.writeBytes(bytes);

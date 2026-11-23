@@ -1730,23 +1730,23 @@ class _SwiggyOrderViewState extends State<SwiggyOrderView> {
         macPrinterAddress: macAddress,
       );
 
-      Future.delayed(const Duration(seconds: 3), () async {
+      Future.delayed(const Duration(seconds: 1), () async {
         if (result) {
           if (!IosPrintTransport.isWifiActive && bytes.length > 200) {
-            const int chunkSize = 180;
+            const int chunkSize = 255;
             for (int i = 0; i < bytes.length; i += chunkSize) {
               final chunk = bytes.sublist(
                 i,
                 (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
               );
               await IosPrintTransport.writeBytes(chunk);
-              await Future.delayed(const Duration(milliseconds: 50));
+              await Future.delayed(const Duration(milliseconds: 35));
             }
           } else {
             await IosPrintTransport.writeBytes(bytes);
           }
 
-          Future.delayed(const Duration(seconds: 11), () async {
+          Future.delayed(const Duration(seconds: 6), () async {
             try {
               if (Get.isRegistered<LoadingController>()) {
                 Get.find<LoadingController>().startLoading(false);

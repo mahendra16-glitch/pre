@@ -2573,10 +2573,10 @@ class _BeachBellingHomeScreenState extends State<BeachBellingHomeScreen> {
               .profileModel!
               .restaurantPrinterNew![currentPrintIndex]
               .macPrinterIp!);
-      Future.delayed(Duration(seconds: 4), () async {
+      Future.delayed(Duration(seconds: 2), () async {
         if (result) {
           await IosPrintTransport.writeBytes(bytes!);
-          Future.delayed(Duration(seconds: 4), () async {
+          Future.delayed(Duration(seconds: 2), () async {
             bytes = null;
             var isDisconnect = await IosPrintTransport.disconnect;
             print('is disconnect $isDisconnect');
@@ -2939,7 +2939,7 @@ class _BeachBellingHomeScreenState extends State<BeachBellingHomeScreen> {
         }
       }
 
-      await Future.delayed(Duration(seconds: 3)); // Simulate async processing
+      await Future.delayed(Duration(seconds: 1)); // Simulate async processing
     } finally {
       // After processing, mark as not processing
       isProcessingOrderQueue = false;

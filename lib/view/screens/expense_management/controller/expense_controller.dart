@@ -1975,7 +1975,7 @@ class ExpenseManagementController extends GetxController
             '$message',
             backgroundColor: Colors.green,
             colorText: Colors.white,
-            duration: Duration(seconds: 3),
+            duration: Duration(seconds: 1),
           );
         } else {
           Get.snackbar(
@@ -2046,7 +2046,7 @@ class ExpenseManagementController extends GetxController
           '$message\nImported: $imported, Updated: $updated, Total: $totalProcessed',
           backgroundColor: Colors.green,
           colorText: Colors.white,
-          duration: Duration(seconds: 4),
+          duration: Duration(seconds: 2),
         );
 
         // Refresh the table list and area options

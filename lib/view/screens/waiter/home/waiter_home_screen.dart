@@ -3580,7 +3580,7 @@
 //         }
 //       }
 
-//       await Future.delayed(Duration(seconds: 3)); // Simulate async processing
+//       await Future.delayed(Duration(seconds: 1)); // Simulate async processing
 //     } finally {
 //       // After processing, mark as not processing
 //       isProcessingOrderQueue = false;
@@ -3891,11 +3891,11 @@
 //               .profileModel!
 //               .restaurantPrinterNew![currentPrintIndex]
 //               .macPrinterIp!);
-//       Future.delayed(Duration(seconds: 4), () async {
+//       Future.delayed(Duration(seconds: 2), () async {
 //         if (result) {
 //           await PrintBluetoothThermal.writeBytes(bytes);
 //           bytes = [];
-//           Future.delayed(Duration(seconds: 4), () async {
+//           Future.delayed(Duration(seconds: 2), () async {
 //             var isDisconnect = await PrintBluetoothThermal.disconnect;
 //             print('is disconnect $isDisconnect');
 //             currentPrintIndex = currentPrintIndex + 1;
@@ -4436,7 +4436,7 @@
 //               if (splitCurrentPrintIndex == 0) {
 //                 await currentBillBytesConvert();
 //               } else
-//                 Future.delayed(Duration(seconds: 3), () async {
+//                 Future.delayed(Duration(seconds: 1), () async {
 //                   await currentBillBytesConvert();
 //                 });
 
@@ -4447,7 +4447,7 @@
 //           if (splitCurrentPrintIndex == 0) {
 //             await currentBillBytesConvert();
 //           } else
-//             Future.delayed(Duration(seconds: 3), () async {
+//             Future.delayed(Duration(seconds: 1), () async {
 //               await currentBillBytesConvert();
 //             });
 //         }
@@ -5262,7 +5262,7 @@
 //             macPrinterAddress:
 //                 Get.find<AuthController>().profileModel!.macBillPrinterIp!);
 
-//         Future.delayed(Duration(seconds: 4), () async {
+//         Future.delayed(Duration(seconds: 2), () async {
 //           if (result) {
 //             // List<int> ticket = await testTicket();
 //             await PrintBluetoothThermal.writeBytes(bytes);

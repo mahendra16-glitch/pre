@@ -279,7 +279,7 @@ class TableManagementController extends GetxController {
             errorMessage,
             backgroundColor: Colors.red,
             colorText: Colors.white,
-            duration: Duration(seconds: 3),
+            duration: Duration(seconds: 1),
           );
         }
       }
@@ -460,7 +460,7 @@ class TableManagementController extends GetxController {
               '$message\nTotal Records: $totalRecords',
               backgroundColor: Colors.green,
               colorText: Colors.white,
-              duration: Duration(seconds: 3),
+              duration: Duration(seconds: 1),
             );
           } else {
             Get.snackbar(
@@ -534,7 +534,7 @@ class TableManagementController extends GetxController {
             '$message\nImported: $imported, Updated: $updated, Total: $totalProcessed',
             backgroundColor: Colors.green,
             colorText: Colors.white,
-            duration: Duration(seconds: 4),
+            duration: Duration(seconds: 2),
           );
 
           // Refresh the table list and area options
@@ -707,7 +707,7 @@ class TableManagementController extends GetxController {
                 errorMessage,
                 backgroundColor: Colors.red,
                 colorText: Colors.white,
-                duration: Duration(seconds: 4),
+                duration: Duration(seconds: 2),
               );
               return; // Exit polling
             } else if (status == 'processing') {
@@ -795,7 +795,7 @@ class TableManagementController extends GetxController {
           message,
           backgroundColor: Colors.green,
           colorText: Colors.white,
-          duration: Duration(seconds: 3),
+          duration: Duration(seconds: 1),
           mainButton: TextButton(
             onPressed: () => _launchURL(downloadUrl),
             child: Text('Open Again', style: TextStyle(color: Colors.white)),

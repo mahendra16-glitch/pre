@@ -917,7 +917,7 @@ class MenuManagementController extends GetxController implements GetxService {
           status: selectedStatus.value,
         );
 
-        Future.delayed(const Duration(milliseconds: 50), () {
+        Future.delayed(const Duration(milliseconds: 35), () {
           if (foodScrollController.hasClients) {
             foodScrollController.jumpTo(currentScrollPosition);
           }

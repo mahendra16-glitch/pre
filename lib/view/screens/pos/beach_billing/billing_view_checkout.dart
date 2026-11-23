@@ -2332,7 +2332,7 @@ class _BillingViewCheckoutState extends State<BillingViewCheckout> {
         macPrinterAddress:
             Get.find<AuthController>().profileModel!.macBillPrinterIp!);
 
-    Future.delayed(Duration(seconds: 3), () async {
+    Future.delayed(Duration(seconds: 1), () async {
       if (result) {
         // List<int> ticket = await testTicket();
         await IosPrintTransport.writeBytes(bytes);

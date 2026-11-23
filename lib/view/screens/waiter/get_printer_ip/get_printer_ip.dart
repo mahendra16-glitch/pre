@@ -266,7 +266,7 @@ class _GetPrinterIpState extends State<GetPrinterIp> {
       List<int> ticket = await testTicket();
       final result = await PrintBluetoothThermal.writeBytes(ticket);
       print("print test result:  $result");
-      Future.delayed(const Duration(seconds: 3), () {
+      Future.delayed(const Duration(seconds: 1), () {
         disconnect();
       });
     }

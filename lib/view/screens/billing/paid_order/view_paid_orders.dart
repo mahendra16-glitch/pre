@@ -61,7 +61,7 @@ class _ViewBillingPaidOrdersState extends State<ViewBillingPaidOrders> {
             Future.delayed(const Duration(milliseconds: 1000), () async {
               PrinterManager.instance
                   .send(type: PrinterType.bluetooth, bytes: pendingTask!);
-              Future.delayed(const Duration(seconds: 11), () async {
+              Future.delayed(const Duration(seconds: 6), () async {
                 await PrinterManager.instance
                     .disconnect(type: PrinterType.bluetooth);
               });
@@ -1030,7 +1030,7 @@ class _ViewBillingPaidOrdersState extends State<ViewBillingPaidOrders> {
       await printerManager.send(
           type: bluetoothPrinter.typePrinter, bytes: bytes);
       pendingTask = null;
-      Future.delayed(const Duration(seconds: 11), () async {
+      Future.delayed(const Duration(seconds: 6), () async {
         try {
           if (Get.isRegistered<LoadingController>()) {
             Get.find<LoadingController>().startLoading(false);
@@ -1070,24 +1070,24 @@ class _ViewBillingPaidOrdersState extends State<ViewBillingPaidOrders> {
         macPrinterAddress: macAddress,
       );
 
-      await Future.delayed(const Duration(seconds: 3));
+      await Future.delayed(const Duration(seconds: 1));
 
       if (result) {
         if (!IosPrintTransport.isWifiActive && bytes.length > 200) {
-          const int chunkSize = 180;
+          const int chunkSize = 255;
           for (int i = 0; i < bytes.length; i += chunkSize) {
             final chunk = bytes.sublist(
               i,
               (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
             );
             await IosPrintTransport.writeBytes(chunk);
-            await Future.delayed(const Duration(milliseconds: 50));
+            await Future.delayed(const Duration(milliseconds: 35));
           }
         } else {
           await IosPrintTransport.writeBytes(bytes);
         }
 
-        Future.delayed(const Duration(seconds: 11), () async {
+        Future.delayed(const Duration(seconds: 6), () async {
           try {
             if (Get.isRegistered<LoadingController>()) {
               Get.find<LoadingController>().startLoading(false);

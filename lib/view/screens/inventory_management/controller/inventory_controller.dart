@@ -373,7 +373,7 @@ class InventoryController extends GetxController implements GetxService {
             // snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.redAccent,
             colorText: Colors.white,
-            duration: Duration(seconds: 4),
+            duration: Duration(seconds: 2),
           );
         } catch (e) {
           log("Error parsing validation errors: $e");
@@ -384,7 +384,7 @@ class InventoryController extends GetxController implements GetxService {
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.redAccent,
             colorText: Colors.white,
-            duration: Duration(seconds: 4),
+            duration: Duration(seconds: 2),
           );
         }
       }

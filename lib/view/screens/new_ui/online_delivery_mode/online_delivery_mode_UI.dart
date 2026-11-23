@@ -2209,7 +2209,7 @@ class _OrderManagementScreenState extends State<OrderManagementScreen>
         }
       }
 
-      await Future.delayed(Duration(seconds: 3)); // Simulate async processing
+      await Future.delayed(Duration(seconds: 1)); // Simulate async processing
     } finally {
       // 1. RELEASE THE PRINTER FOR THE NEXT JOB
       PrintDebugLogger.lockRelease(
@@ -2288,7 +2288,7 @@ class _OrderManagementScreenState extends State<OrderManagementScreen>
         }
       }
 
-      await Future.delayed(Duration(seconds: 3)); // Simulate async processing
+      await Future.delayed(Duration(seconds: 1)); // Simulate async processing
     } finally {
       // After processing, mark as not processing
       // 1. RELEASE THE PRINTER FOR THE NEXT JOB
@@ -2474,7 +2474,7 @@ class _OrderManagementScreenState extends State<OrderManagementScreen>
                     isAggregator: true,
                     aggregatorOrder: Get.find<SwiggyController>().order[
                         Get.find<SwiggyController>().updatedOrderIndex]));
-                await Future.delayed(Duration(seconds: 3));
+                await Future.delayed(Duration(seconds: 1));
                 checkQueueProcess(AutoPrintType(
                     isBillPrint: true,
                     isAggregator: true,
@@ -6445,7 +6445,7 @@ class _OrderManagementScreenState extends State<OrderManagementScreen>
         await IosPrintTransport.connect(wifiPrinter: order == null && swiggyKot == null ? NetworkPrinterResolver.billPrinter() : NetworkPrinterResolver.kotPrinterAt(currentPrintIndex), macPrinterAddress: macAddress);
 
     // ✅ iPad needs settle time
-    await Future.delayed(const Duration(seconds: 5));
+    await Future.delayed(const Duration(seconds: 2));
 
     if (!connected) {
       // ❌ Connection failed — advance to next station and carry completer
@@ -6495,7 +6495,7 @@ class _OrderManagementScreenState extends State<OrderManagementScreen>
       }
 
       // Allow printer buffer to flush
-      await Future.delayed(const Duration(seconds: 4));
+      await Future.delayed(const Duration(seconds: 2));
 
       bytes.clear();
     } catch (e, s) {
@@ -6523,7 +6523,7 @@ class _OrderManagementScreenState extends State<OrderManagementScreen>
   }
 
   Future<void> _writeBytesForIPad(List<int> bytes) async {
-    const int chunkSize = 180; // iPad-safe BLE MTU
+    const int chunkSize = 255; // iPad-safe BLE MTU
     const int delayMs = 60;
 
     for (int i = 0; i < bytes.length; i += chunkSize) {
