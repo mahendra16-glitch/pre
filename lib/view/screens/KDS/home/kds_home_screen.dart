@@ -2343,25 +2343,40 @@ class _KDSHomeScreenState extends State<KDSHomeScreen> {
     // await PrintBluetoothThermal.pairedBluetooths;
 
     // Future.delayed(Duration(seconds: 5), () async {
-    if (printer!.macPrinterIp == '' &&
+    if (printer?.macPrinterIp == '' &&
         NetworkPrinterResolver.kotPrinter(printer) == null) {
-      showErrorToast('${printer!.areaName} kot failed');
+      showErrorToast('${printer?.areaName} kot failed');
       isConnect = true;
       isFailedPrint = true;
     } else {
+      final mac = printer?.macPrinterIp ?? '';
       final bool result = await IosPrintTransport.connect(
           wifiPrinter: NetworkPrinterResolver.kotPrinter(printer),
-          macPrinterAddress: printer!.macPrinterIp!);
+          macPrinterAddress: mac);
+      
+      await Future.delayed(const Duration(seconds: 3));
+      
       if (result) {
-        await Future.delayed(const Duration(seconds: 4));
-        await IosPrintTransport.writeBytes(bytes);
+        if (!IosPrintTransport.isWifiActive && bytes.length > 200) {
+          const int chunkSize = 180;
+          for (int i = 0; i < bytes.length; i += chunkSize) {
+            final chunk = bytes.sublist(
+              i,
+              (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
+            );
+            await IosPrintTransport.writeBytes(chunk);
+            await Future.delayed(const Duration(milliseconds: 50));
+          }
+        } else {
+          await IosPrintTransport.writeBytes(bytes);
+        }
         await Future.delayed(const Duration(seconds: 4));
         bytes.clear();
         final isDisconnect = await IosPrintTransport.disconnect;
         print('is disconnect $isDisconnect');
         print("print test result: $result");
       } else {
-        showErrorToast('${printer!.areaName} kot failed');
+        showErrorToast('${printer?.areaName} kot failed');
         isConnect = true;
         isFailedPrint = true;
       }
