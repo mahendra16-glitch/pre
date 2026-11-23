@@ -10167,9 +10167,6 @@ class _POSCartScreenState extends State<POSCartScreen> {
         macPrinterAddress: macAddress,
       );
 
-    // Small delay after connect (important on iPad)
-    await Future.delayed(const Duration(seconds: 4));
-
     if (!result) {
       Get.find<LoadingController>().startLoading(false);
       await Get.find<LoadingController>()
@@ -10179,48 +10176,40 @@ class _POSCartScreenState extends State<POSCartScreen> {
     }
 
     try {
-      // 🔥 iPad-safe chunked write (MOST IMPORTANT PART)
+      // iPad-safe chunked write
       (Get.find<AuthController>().profileModel!.billPrinterPaperRoll == 58 ||
               MediaQuery.of(context).size.shortestSide < 570)
           ? await IosPrintTransport.writeBytes(bytes)
           : await _writeBytesForIPad(bytes);
 
-      // Wait a bit to ensure printer finishes printing
-      await Future.delayed(
-          Duration(
-              seconds: bytes.length <= 5850
-                  ? 2
-                  : bytes.length <= 7890
-                      ? 3
-                      : bytes.length <= 10195
-                          ? 6
-                          : bytes.length <= 13100
-                              ? 10
-                              : bytes.length <= 21150
-                                  ? 15
-                                  : 20), () async {
-        if (Get.isRegistered<LoadingController>()) {
-          Get.find<LoadingController>().startLoading(false);
-          await Get.find<LoadingController>()
-              .changeText(data: 'Successfully printed!!');
-          await Get.find<LoadingController>().changeStatus(data: true);
-        }
-        final isDisconnect = await IosPrintTransport.disconnect;
-        print('is disconnect $isDisconnect');
-        if (isBill) {
-          Get.find<CartController>().showLoader(false);
+      // Wait for printer to finish processing bytes
+      await Future.delayed(Duration(
+          seconds: bytes.length <= 5850
+              ? 2
+              : bytes.length <= 7890
+                  ? 3
+                  : bytes.length <= 10195
+                      ? 6
+                      : bytes.length <= 13100
+                          ? 10
+                          : bytes.length <= 21150
+                              ? 15
+                              : 20));
 
-          if (MediaQuery.of(context).size.shortestSide > 570) {
-            Get.until((route) =>
-                route.settings.name == RouteHelper.getTableViewHomeRoute());
-            Get.find<CartController>().clearCartList();
-          } else {
-            Get.until((route) =>
-                route.settings.name == RouteHelper.getTableViewHomeRoute());
-            Get.find<CartController>().clearCartList();
-          }
-        }
-      });
+      if (Get.isRegistered<LoadingController>()) {
+        Get.find<LoadingController>().startLoading(false);
+        await Get.find<LoadingController>()
+            .changeText(data: 'Successfully printed!!');
+        await Get.find<LoadingController>().changeStatus(data: true);
+      }
+      final isDisconnect = await IosPrintTransport.disconnect;
+      print('is disconnect $isDisconnect');
+      if (isBill) {
+        Get.find<CartController>().showLoader(false);
+        Get.until((route) =>
+            route.settings.name == RouteHelper.getTableViewHomeRoute());
+        Get.find<CartController>().clearCartList();
+      }
     } catch (e) {
       print('Print error: $e');
       if (Get.isRegistered<LoadingController>()) {

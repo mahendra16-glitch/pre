@@ -1607,42 +1607,52 @@ class BillingPaymentMethod extends StatelessWidget {
         macPrinterAddress: macAddress,
       );
 
-      Future.delayed(const Duration(seconds: 3), () async {
-        if (result) {
-          if (!IosPrintTransport.isWifiActive && bytes.length > 200) {
-            const int chunkSize = 180;
-            for (int i = 0; i < bytes.length; i += chunkSize) {
-              final chunk = bytes.sublist(
-                i,
-                (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
-              );
-              await IosPrintTransport.writeBytes(chunk);
-              await Future.delayed(const Duration(milliseconds: 50));
-            }
-          } else {
-            await IosPrintTransport.writeBytes(bytes);
-          }
-
-          Future.delayed(const Duration(seconds: 11), () async {
-            try {
-              if (Get.isRegistered<LoadingController>()) {
-                Get.find<LoadingController>().startLoading(false);
-                await Get.find<LoadingController>()
-                    .changeText(data: 'Successfully printed!!');
-                await Get.find<LoadingController>().changeStatus(data: true);
-              }
-              await IosPrintTransport.disconnect;
-            } catch (_) {}
-          });
-        } else {
-          if (Get.isRegistered<LoadingController>()) {
-            Get.find<LoadingController>().startLoading(false);
-            await Get.find<LoadingController>().changeText(
-                data: 'Failed to connect to printer!!', error: true);
-            await Get.find<LoadingController>().changeStatus(data: true);
-          }
+      if (!result) {
+        if (Get.isRegistered<LoadingController>()) {
+          Get.find<LoadingController>().startLoading(false);
+          await Get.find<LoadingController>().changeText(
+              data: 'Failed to connect to printer!!', error: true);
+          await Get.find<LoadingController>().changeStatus(data: true);
         }
-      });
+        return;
+      }
+
+      if (!IosPrintTransport.isWifiActive && bytes.length > 200) {
+        const int chunkSize = 180;
+        for (int i = 0; i < bytes.length; i += chunkSize) {
+          final chunk = bytes.sublist(
+            i,
+            (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
+          );
+          await IosPrintTransport.writeBytes(chunk);
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
+      } else {
+        await IosPrintTransport.writeBytes(bytes);
+      }
+
+      await Future.delayed(Duration(
+          seconds: bytes.length <= 5850
+              ? 2
+              : bytes.length <= 7890
+                  ? 3
+                  : bytes.length <= 10195
+                      ? 6
+                      : bytes.length <= 13100
+                          ? 10
+                          : bytes.length <= 21150
+                              ? 15
+                              : 20));
+
+      try {
+        if (Get.isRegistered<LoadingController>()) {
+          Get.find<LoadingController>().startLoading(false);
+          await Get.find<LoadingController>()
+              .changeText(data: 'Successfully printed!!');
+          await Get.find<LoadingController>().changeStatus(data: true);
+        }
+        await IosPrintTransport.disconnect;
+      } catch (_) {}
     } catch (e) {
       if (Get.isRegistered<LoadingController>()) {
         try {

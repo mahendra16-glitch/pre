@@ -2349,27 +2349,23 @@ class _KDSHomeScreenState extends State<KDSHomeScreen> {
       isConnect = true;
       isFailedPrint = true;
     } else {
-      final bool result = await IosPrintTransport.connect(wifiPrinter: NetworkPrinterResolver.kotPrinter(printer), 
+      final bool result = await IosPrintTransport.connect(
+          wifiPrinter: NetworkPrinterResolver.kotPrinter(printer),
           macPrinterAddress: printer!.macPrinterIp!);
-      Future.delayed(Duration(seconds: 4), () async {
-        if (result) {
-          await IosPrintTransport.writeBytes(bytes);
-          Future.delayed(Duration(seconds: 4), () async {
-            bytes.clear();
-            var isDisconnect = await IosPrintTransport.disconnect;
-            print('is disconnect $isDisconnect');
-          });
-          print("print test result:  $result");
-        } else {
-          //no conectado, reconecte
-          // showErrorToast('Failed to bluetooth connect');
-          showErrorToast('${printer!.areaName} kot failed');
-          isConnect = true;
-          isFailedPrint = true;
-        }
-      });
+      if (result) {
+        await Future.delayed(const Duration(seconds: 4));
+        await IosPrintTransport.writeBytes(bytes);
+        await Future.delayed(const Duration(seconds: 4));
+        bytes.clear();
+        final isDisconnect = await IosPrintTransport.disconnect;
+        print('is disconnect $isDisconnect');
+        print("print test result: $result");
+      } else {
+        showErrorToast('${printer!.areaName} kot failed');
+        isConnect = true;
+        isFailedPrint = true;
+      }
     }
-    // });
   }
 }
 
