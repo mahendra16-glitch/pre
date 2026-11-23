@@ -10199,10 +10199,12 @@ class _POSCartScreenState extends State<POSCartScreen> {
                               : bytes.length <= 21150
                                   ? 15
                                   : 20), () async {
-        Get.find<LoadingController>().startLoading(false);
-        await Get.find<LoadingController>()
-            .changeText(data: 'Successfully printed!!');
-        await Get.find<LoadingController>().changeStatus(data: true);
+        if (Get.isRegistered<LoadingController>()) {
+          Get.find<LoadingController>().startLoading(false);
+          await Get.find<LoadingController>()
+              .changeText(data: 'Successfully printed!!');
+          await Get.find<LoadingController>().changeStatus(data: true);
+        }
         final isDisconnect = await IosPrintTransport.disconnect;
         print('is disconnect $isDisconnect');
         if (isBill) {
@@ -10221,10 +10223,20 @@ class _POSCartScreenState extends State<POSCartScreen> {
       });
     } catch (e) {
       print('Print error: $e');
-      Get.find<LoadingController>().startLoading(false);
-      await Get.find<LoadingController>()
-          .changeText(data: 'Printing failed!!', error: true);
-      await Get.find<LoadingController>().changeStatus(data: true);
+      if (Get.isRegistered<LoadingController>()) {
+        Get.find<LoadingController>().startLoading(false);
+        await Get.find<LoadingController>()
+            .changeText(data: 'Printing failed!!', error: true);
+        await Get.find<LoadingController>().changeStatus(data: true);
+      }
+    }
+    } catch (e) {
+      if (Get.isRegistered<LoadingController>()) {
+        Get.find<LoadingController>().startLoading(false);
+        await Get.find<LoadingController>()
+            .changeText(data: 'Connection failed: $e', error: true);
+        await Get.find<LoadingController>().changeStatus(data: true);
+      }
     }
   }
 
