@@ -1753,44 +1753,54 @@ class _BillingHomeScreenState extends State<BillingHomeScreen> {
       final bool result = await IosPrintTransport.connect(
           wifiPrinter: NetworkPrinterResolver.kotPrinterAt(currentPrintIndex), 
           macPrinterAddress: macAddress);
-      Future.delayed(Duration(seconds: 4), () async {
-        if (result) {
-          await IosPrintTransport.writeBytes(bytes);
-          Future.delayed(
-              Duration(
-                  seconds: bytes.length <= 5850
-                      ? 2
-                      : bytes.length <= 7890
-                          ? 3
-                          : bytes.length <= 10195
-                              ? 6
-                              : bytes.length <= 13100
-                                  ? 10
-                                  : bytes.length <= 21150
-                                      ? 15
-                                      : 20), () async {
-            bytes = [];
-            var isDisconnect = await IosPrintTransport.disconnect;
-            print('is disconnect $isDisconnect');
-            currentPrintIndex = currentPrintIndex + 1;
-            dataCheck();
-          });
-          print("print test result:  $result");
+      
+      await Future.delayed(const Duration(seconds: 3));
+
+      if (result) {
+        if (!IosPrintTransport.isWifiActive && bytes.length > 200) {
+          const int chunkSize = 180;
+          for (int i = 0; i < bytes.length; i += chunkSize) {
+            final chunk = bytes.sublist(
+              i,
+              (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
+            );
+            await IosPrintTransport.writeBytes(chunk);
+            await Future.delayed(const Duration(milliseconds: 50));
+          }
         } else {
-          //no conectado, reconecte
-          // showErrorToast('Failed to bluetooth connect');
-          // showErrorToast(
-          //     '${Get.find<AuthController>().profileModel.restaurantPrinterNew[currentPrintIndex].areaName} kot failed');
-          isConnect = true;
-          isFailedPrint = true;
-          failedCartProductList[currentPrintIndex] =
-              cartProductList[currentPrintIndex];
+          await IosPrintTransport.writeBytes(bytes);
+        }
+
+        Future.delayed(
+            Duration(
+                seconds: bytes.length <= 5850
+                    ? 2
+                    : bytes.length <= 7890
+                        ? 3
+                        : bytes.length <= 10195
+                            ? 6
+                            : bytes.length <= 13100
+                                ? 10
+                                : bytes.length <= 21150
+                                    ? 15
+                                    : 20), () async {
+          bytes = [];
+          var isDisconnect = await IosPrintTransport.disconnect;
+          print('is disconnect $isDisconnect');
           currentPrintIndex = currentPrintIndex + 1;
           dataCheck();
-        }
-      });
+        });
+        print("print test result:  $result");
+      } else {
+        //no conectado, reconecte
+        isConnect = true;
+        isFailedPrint = true;
+        failedCartProductList[currentPrintIndex] =
+            cartProductList[currentPrintIndex];
+        currentPrintIndex = currentPrintIndex + 1;
+        dataCheck();
+      }
     }
-    // });
   }
 
   Future<void> _updateConnectionStatus(ConnectivityResult result) async {
