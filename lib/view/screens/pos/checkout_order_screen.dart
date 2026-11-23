@@ -10152,17 +10152,20 @@ class _POSCartScreenState extends State<POSCartScreen> {
   // }
 
   Future<void> _iosPrintEscPos(List<int> bytes, {bool isBill = false}) async {
-    print('####24###### bytes length ${bytes.length}');
-    // bytes += generator.feed(2);
+    try {
+      print('####24###### bytes length ${bytes.length}');
 
-    final profile = Get.isRegistered<AuthController>()
-        ? Get.find<AuthController>().profileModel
-        : null;
-    final macAddress = profile?.macBillPrinterIp ?? '';
+      final profile = Get.isRegistered<AuthController>()
+          ? Get.find<AuthController>().profileModel
+          : null;
+      final macAddress = (profile?.macBillPrinterIp ?? '').isNotEmpty
+          ? profile!.macBillPrinterIp!
+          : (profile?.billPrinterIp ?? '');
 
-    final bool result = await IosPrintTransport.connect(wifiPrinter: NetworkPrinterResolver.billPrinter(), 
-      macPrinterAddress: macAddress,
-    );
+      final bool result = await IosPrintTransport.connect(
+        wifiPrinter: NetworkPrinterResolver.billPrinter(),
+        macPrinterAddress: macAddress,
+      );
 
     // Small delay after connect (important on iPad)
     await Future.delayed(const Duration(seconds: 4));

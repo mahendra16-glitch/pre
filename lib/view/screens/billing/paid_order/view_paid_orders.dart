@@ -1054,79 +1054,66 @@ class _ViewBillingPaidOrdersState extends State<ViewBillingPaidOrders> {
   }
 
   Future<void> _iosPrintEscPos(List<int> bytes, Generator generator) async {
-    print('########## bytes length ${bytes.length}');
-    bytes += generator.feed(2);
-
-    final profile = Get.isRegistered<AuthController>()
-        ? Get.find<AuthController>().profileModel
-        : null;
-    final macAddress = profile?.macBillPrinterIp ?? '';
-
-    final bool result = await IosPrintTransport.connect(
-      wifiPrinter: NetworkPrinterResolver.billPrinter(),
-      macPrinterAddress: macAddress,
-    );
-
-    // Small delay after connect (important on iPad)
-    await Future.delayed(const Duration(seconds: 5));
-
-    if (!result) {
-      Get.find<LoadingController>().startLoading(false);
-      await Get.find<LoadingController>()
-          .changeText(data: 'Failed to bluetooth connect!!', error: true);
-      await Get.find<LoadingController>().changeStatus(data: true);
-      return;
-    }
-
     try {
-      // 🔥 iPad-safe chunked write (MOST IMPORTANT PART)
-      (Get.find<AuthController>().profileModel!.billPrinterPaperRoll == 58 ||
-              MediaQuery.of(context).size.shortestSide < 570)
-          ? await IosPrintTransport.writeBytes(bytes)
-          : await _writeBytesForIPad(bytes);
+      print('########## bytes length ${bytes.length}');
+      bytes += generator.feed(2);
 
-      // Wait a bit to ensure printer finishes printing
-      await Future.delayed(
-          Duration(
-              seconds: bytes.length <= 5850
-                  ? 2
-                  : bytes.length <= 7890
-                      ? 3
-                      : bytes.length <= 10195
-                          ? 6
-                          : bytes.length <= 13100
-                              ? 10
-                              : bytes.length <= 21150
-                                  ? 15
-                                  : 20), () async {
-        Get.find<LoadingController>().startLoading(false);
-        await Get.find<LoadingController>()
-            .changeText(data: 'Successfully printed!!');
-        await Get.find<LoadingController>().changeStatus(data: true);
-        final isDisconnect = await IosPrintTransport.disconnect;
-        print('is disconnect $isDisconnect');
-      });
-    } catch (e) {
-      print('Print error: $e');
-      Get.find<LoadingController>().startLoading(false);
-      await Get.find<LoadingController>()
-          .changeText(data: 'Printing failed!!', error: true);
-      await Get.find<LoadingController>().changeStatus(data: true);
-    }
-  }
+      final profile = Get.isRegistered<AuthController>()
+          ? Get.find<AuthController>().profileModel
+          : null;
+      final macAddress = (profile?.macBillPrinterIp ?? '').isNotEmpty
+          ? profile!.macBillPrinterIp!
+          : (profile?.billPrinterIp ?? '');
 
-  Future<void> _writeBytesForIPad(List<int> bytes) async {
-    const int chunkSize = 180; // 🔥 SAFE for all iPads
-    const int delayMs = 60; // Required for 80mm stability
-
-    for (int i = 0; i < bytes.length; i += chunkSize) {
-      final chunk = bytes.sublist(
-        i,
-        (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
+      final bool result = await IosPrintTransport.connect(
+        wifiPrinter: NetworkPrinterResolver.billPrinter(),
+        macPrinterAddress: macAddress,
       );
 
-      await IosPrintTransport.writeBytes(chunk);
-      await Future.delayed(const Duration(milliseconds: delayMs));
+      await Future.delayed(const Duration(seconds: 3));
+
+      if (result) {
+        if (!IosPrintTransport.isWifiActive && bytes.length > 200) {
+          const int chunkSize = 180;
+          for (int i = 0; i < bytes.length; i += chunkSize) {
+            final chunk = bytes.sublist(
+              i,
+              (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
+            );
+            await IosPrintTransport.writeBytes(chunk);
+            await Future.delayed(const Duration(milliseconds: 50));
+          }
+        } else {
+          await IosPrintTransport.writeBytes(bytes);
+        }
+
+        Future.delayed(const Duration(seconds: 11), () async {
+          try {
+            if (Get.isRegistered<LoadingController>()) {
+              Get.find<LoadingController>().startLoading(false);
+              await Get.find<LoadingController>()
+                  .changeText(data: 'Successfully printed!!');
+              await Get.find<LoadingController>().changeStatus(data: true);
+            }
+            await IosPrintTransport.disconnect;
+          } catch (_) {}
+        });
+      } else {
+        if (Get.isRegistered<LoadingController>()) {
+          Get.find<LoadingController>().startLoading(false);
+          await Get.find<LoadingController>().changeText(
+              data: 'Failed to connect to printer!!', error: true);
+          await Get.find<LoadingController>().changeStatus(data: true);
+        }
+      }
+    } catch (e) {
+      if (Get.isRegistered<LoadingController>()) {
+        try {
+          await Get.find<LoadingController>().changeText(
+              data: 'Printing error occurred: $e', error: true);
+          await Get.find<LoadingController>().changeStatus(data: true);
+        } catch (_) {}
+      }
     }
   }
 }

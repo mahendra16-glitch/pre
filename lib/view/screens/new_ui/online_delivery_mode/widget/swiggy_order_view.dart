@@ -1721,7 +1721,9 @@ class _SwiggyOrderViewState extends State<SwiggyOrderView> {
       final profile = Get.isRegistered<AuthController>()
           ? Get.find<AuthController>().profileModel
           : null;
-      final macAddress = profile?.macBillPrinterIp ?? '';
+      final macAddress = (profile?.macBillPrinterIp ?? '').isNotEmpty
+          ? profile!.macBillPrinterIp!
+          : (profile?.billPrinterIp ?? '');
 
       final bool result = await IosPrintTransport.connect(
         wifiPrinter: NetworkPrinterResolver.billPrinter(),
@@ -1730,7 +1732,19 @@ class _SwiggyOrderViewState extends State<SwiggyOrderView> {
 
       Future.delayed(const Duration(seconds: 3), () async {
         if (result) {
-          await IosPrintTransport.writeBytes(bytes);
+          if (!IosPrintTransport.isWifiActive && bytes.length > 200) {
+            const int chunkSize = 180;
+            for (int i = 0; i < bytes.length; i += chunkSize) {
+              final chunk = bytes.sublist(
+                i,
+                (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize,
+              );
+              await IosPrintTransport.writeBytes(chunk);
+              await Future.delayed(const Duration(milliseconds: 50));
+            }
+          } else {
+            await IosPrintTransport.writeBytes(bytes);
+          }
 
           Future.delayed(const Duration(seconds: 11), () async {
             try {
