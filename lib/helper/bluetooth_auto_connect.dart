@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mygenie_restaurant/controller/auth_controller.dart';
+import 'package:mygenie_restaurant/helper/wifi_printer/ios_print_transport.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 
 /// Keeps the iOS Bluetooth printer connected automatically in the background.
@@ -114,6 +115,9 @@ class BluetoothAutoConnect with WidgetsBindingObserver {
       final ok = await PrintBluetoothThermal.connect(macPrinterAddress: uuid);
       if (ok) {
         log('[BT-AutoConnect] ✅ Auto-connected to printer $uuid');
+        // Tell IosPrintTransport which UUID is now connected so that
+        // subsequent connect() calls skip the redundant reconnect.
+        IosPrintTransport.notifyExternalConnection(uuid);
       } else {
         log('[BT-AutoConnect] ❌ Auto-connect failed, will retry in ${_checkInterval.inSeconds}s');
       }

@@ -209,6 +209,16 @@ class IosPrintTransport {
     return true;
   }
 
+  /// Called by BluetoothAutoConnect after it establishes a background connection.
+  /// Registers the address so that [connect] can skip the redundant reconnect
+  /// and avoid iOS returning false for "already connected to this peripheral".
+  static void notifyExternalConnection(String address) {
+    final trimmed = address.trim();
+    if (trimmed.isEmpty) return;
+    _lastConnectedAddress = trimmed;
+    _log('External BT connection registered: $trimmed');
+  }
+
   /// Explicit force disconnect for Bluetooth when needed.
   static Future<bool> forceDisconnectBluetooth() async {
     _lastConnectedAddress = null;
