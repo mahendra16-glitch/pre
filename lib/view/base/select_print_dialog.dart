@@ -517,8 +517,12 @@ class _PrintDialogState extends State<PrintDialog> {
       isPrinterProccessingList[currentPrintIndex] = false;
       setState(() {});
 
+      final bool _isBillSlot = widget.isBillPrint &&
+          currentPrintIndex == widget.cartProductList.length;
       showErrorToast(
-        '${Get.find<AuthController>().profileModel!.restaurantPrinterNew![currentPrintIndex].areaName} kot failed',
+        _isBillSlot
+            ? 'Bill print failed'
+            : '${Get.find<AuthController>().profileModel!.restaurantPrinterNew![currentPrintIndex].areaName} kot failed',
       );
 
       currentPrintIndex++;
@@ -577,8 +581,12 @@ class _PrintDialogState extends State<PrintDialog> {
       print('Print error: $e');
       isPrinterProccessingList[currentPrintIndex] = false;
       setState(() {});
+      final bool _isBillSlot = widget.isBillPrint &&
+          currentPrintIndex == widget.cartProductList.length;
       showErrorToast(
-        '${Get.find<AuthController>().profileModel!.restaurantPrinterNew![currentPrintIndex].areaName} kot failed',
+        _isBillSlot
+            ? 'Bill print failed'
+            : '${Get.find<AuthController>().profileModel!.restaurantPrinterNew![currentPrintIndex].areaName} kot failed',
       );
     } finally {
       // ✅ FIX 2: disconnect FIRST, then clear bytes.
