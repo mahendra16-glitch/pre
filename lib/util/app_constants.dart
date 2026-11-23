@@ -7,17 +7,11 @@ class AppConstants {
   static const String APP_NAME = 'MyGenie Restaurant';
 
   // static const String BASE_URL = 'https://manage.mygenie.online'; //live
-  // static const String SOCKET_BASE_URL =
-  //     'https://socket.mygenie.online'; //production  //change the crm also
-  // static const String CRM_BASE_URL =
-  //     'https://crm-mygenie.mygenie.online'; //CRM PRODUCTION
-  // static const String SOCKET_BASE_URL = 'http://13.233.63.7:3000'; //production
   static const String SOCKET_BASE_URL =
-      'https://presocket.mygenie.online'; //devlopment
-  static const String BASE_URL = 'https://preprod.mygenie.online'; // devlopment
-  static const String CRM_BASE_URL = 'https://crm.mygenie.online'; //CRM UAT
-  // static const String SOCKET_BASE_URL =
-  //     'http://52.66.232.149:5000'; //devlopment
+      'https://socket.mygenie.online'; //production  //change the crm also
+  static const String CRM_BASE_URL =
+      'https://crm-mygenie.mygenie.online'; //CRM PRODUCTION
+  static const String BASE_URL = 'https://manage.mygenie.online'; // production
   static const String FEEDBACK_BASE_URL =
       'https://order.mygenie.online/feedback'; // devlopment
   static const String EMPLOYEE_LOGIN_URI =
