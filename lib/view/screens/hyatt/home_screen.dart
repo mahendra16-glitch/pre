@@ -86,6 +86,7 @@ import 'package:mygenie_restaurant/view/screens/resturant_config/delivery_manage
 import 'package:mygenie_restaurant/view/screens/resturant_config/loyality/conversion_redemption_rate.dart';
 import 'package:mygenie_restaurant/view/screens/resturant_config/resturant_setting/resturant_setting.dart';
 import 'package:mygenie_restaurant/view/screens/resturant_config/view/printer_management/printer_management.dart';
+import 'package:mygenie_restaurant/view/screens/resturant_config/view/bill_layout/bill_layout_screen.dart';
 import 'package:mygenie_restaurant/view/screens/resturant_config/view/table_management/table_management_screen.dart';
 import 'package:mygenie_restaurant/view/screens/revenue_report/print_report.dart';
 import 'package:mygenie_restaurant/view/screens/revenue_report/revenue_report.dart';
@@ -4271,6 +4272,28 @@ class _BuffetHomeScreenState extends State<BuffetHomeScreen> {
                         ),
                       ),
                     ),
+                  10.height,
+                  InkWell(
+                    onTap: () async {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      scaffoldKey.currentState?.closeDrawer();
+                      await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const BillLayoutScreen()));
+                    },
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 15, top: 0),
+                        child: Text(
+                          'Bill / KOT Layout',
+                          style: poppinsMedium.copyWith(
+                              fontSize: 13, color: ColorTheme.hintText),
+                        ),
+                      ),
+                    ),
+                  ),
                   if (Get.find<AuthController>()
                       .profileModel!
                       .role!

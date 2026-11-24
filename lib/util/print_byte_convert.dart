@@ -12,8 +12,10 @@ import '../data/model/response/get_paid_order_detail_response.dart';
 import '../data/model/response/get_waiter_order_list_response.dart';
 import '../data/model/response/profile_model.dart';
 import '../helper/logo_helper.dart';
+import '../helper/local_print_config_service.dart';
 import '../helper/price_converter.dart';
 import '../helper/printer_config.dart';
+import '../data/model/local/bill_layout_config.dart';
 import 'app_constants.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../data/model/response/get_swiggy_order_list_response.dart';
@@ -75,6 +77,39 @@ class PrintByteConvert {
         : profileModel.printConfigList!.first;
     isShowDate =
         profileModel.restaurants!.first.showFoodDate == 'Yes' ? true : false;
+
+    // Load locally saved layout settings (falls back to defaults if none saved).
+    final localLayout = await LocalPrintConfigService.instance.load();
+    // Helper: get a section from the local layout by id, or null if not found.
+    BillSectionConfig? _localSection(String id) {
+      for (final s in [
+        ...localLayout.billHeader,
+        ...localLayout.billFooter,
+        ...localLayout.kotSections,
+      ]) {
+        if (s.id == id) return s;
+      }
+      return null;
+    }
+    // Returns PosStyles from local config for a section, with server-config fallback.
+    PosStyles _localStyle(String sectionId, {String? serverFallback, PosAlign? fallbackAlign}) {
+      final sec = _localSection(sectionId);
+      if (sec != null) {
+        return LocalPrintConfigService.stylesFromSection(
+          sec,
+          isPaperSize80: paperRoll == 80,
+        );
+      }
+      return styleFunction(
+        name: serverFallback ?? '',
+        isPaperSize80: paperRoll == 80,
+        align: fallbackAlign ?? PosAlign.center,
+      );
+    }
+    bool _isVisible(String sectionId, {bool defaultValue = true}) {
+      final sec = _localSection(sectionId);
+      return sec?.visible ?? defaultValue;
+    }
     final profile = await CapabilityProfile.load(name: 'XP-N160I');
     final generator =
         Generator(paperRoll == 58 ? PaperSize.mm58 : PaperSize.mm80, profile);
@@ -104,45 +139,41 @@ class PrintByteConvert {
       if (profileModel.restaurants != null &&
           profileModel.restaurants!.isNotEmpty) {
         final restaurant = profileModel.restaurants!.first;
-        bytes += generator.text(restaurant.name ?? '',
-            styles: styleFunction(
-                name: printConfig.restaurantTitle ?? '',
-                isPaperSize80: paperRoll == 80));
-        bytes += generator.text(restaurant.address ?? '',
-            styles: styleFunction(
-                name: printConfig.restaurantAddress1 ?? '',
-                isPaperSize80: paperRoll == 80));
-        if (restaurant.phone != null && restaurant.phone != '')
+        if (_isVisible('restaurant_name'))
+          bytes += generator.text(restaurant.name ?? '',
+              styles: _localStyle('restaurant_name',
+                  serverFallback: printConfig.restaurantTitle ?? ''));
+        if (_isVisible('address'))
+          bytes += generator.text(restaurant.address ?? '',
+              styles: _localStyle('address',
+                  serverFallback: printConfig.restaurantAddress1 ?? ''));
+        if (_isVisible('phone') && restaurant.phone != null && restaurant.phone != '')
           bytes += generator.text(restaurant.phone ?? '',
-              styles: styleFunction(
-                  name: printConfig.restaurantAddress1 ?? '',
-                  isPaperSize80: paperRoll == 80));
-        if ((restaurant.gstCode ?? '').isNotEmpty)
+              styles: _localStyle('phone',
+                  serverFallback: printConfig.restaurantAddress1 ?? ''));
+        if (_isVisible('gst') && (restaurant.gstCode ?? '').isNotEmpty)
           bytes += generator.text('GST no. ${restaurant.gstCode ?? ''}',
-              styles: styleFunction(
-                  name: printConfig.restaurantGstno ?? '',
-                  isPaperSize80: paperRoll == 80));
-        if ((restaurant.fssai ?? '').isNotEmpty)
+              styles: _localStyle('gst',
+                  serverFallback: printConfig.restaurantGstno ?? ''));
+        if (_isVisible('fssai') && (restaurant.fssai ?? '').isNotEmpty)
           bytes += generator.text('FSI no. ${restaurant.fssai ?? ''}',
-              styles: styleFunction(
-                  name: printConfig.restaurantFssaiNo ?? '',
-                  isPaperSize80: paperRoll == 80));
+              styles: _localStyle('fssai',
+                  serverFallback: printConfig.restaurantFssaiNo ?? ''));
       }
     }
 
     if (printType == 'kot' ||
         printType == 'swiggy_kot' ||
-        printType == 'station_kot')
-      bytes += generator.text(stationName,
-          styles: styleFunction(
-              name: printConfig.stationName!, isPaperSize80: paperRoll == 80));
-    if ((printType == 'kot' ||
-            printType == 'swiggy_kot' ||
-            printType == 'station_kot') &&
-        printTitle != '')
-      bytes += generator.text(printTitle,
-          styles: styleFunction(
-              name: printConfig.stationName!, isPaperSize80: paperRoll == 80));
+        printType == 'station_kot') {
+      if (_isVisible('k_station'))
+        bytes += generator.text(stationName,
+            styles: _localStyle('k_station',
+                serverFallback: printConfig.stationName ?? ''));
+      if (_isVisible('k_title') && printTitle != '')
+        bytes += generator.text(printTitle,
+            styles: _localStyle('k_title',
+                serverFallback: printConfig.stationName ?? ''));
+    }
 
     ///////////////////  Order Detail /////////////////////
 
@@ -2086,30 +2117,36 @@ class PrintByteConvert {
       bytes += generator.hr(ch: '....');
     }
 ////////////////////////      Bill amount detail    //////////////
+    // Label-value row using local config size+bold; label=left, value=right.
+    PosStyles _footerLabel(String sectionId, {String? serverFallback}) {
+      final sec = _localSection(sectionId);
+      return sec != null
+          ? LocalPrintConfigService.labelStyleFromSection(sec, isPaperSize80: paperRoll == 80)
+          : styleFunction(align: PosAlign.left, name: serverFallback ?? '', isPaperSize80: paperRoll == 80);
+    }
+    PosStyles _footerValue(String sectionId, {String? serverFallback}) {
+      final sec = _localSection(sectionId);
+      return sec != null
+          ? LocalPrintConfigService.valueStyleFromSection(sec, isPaperSize80: paperRoll == 80)
+          : styleFunction(align: PosAlign.right, name: serverFallback ?? '', isPaperSize80: paperRoll == 80);
+    }
+    List<int> _footerRow(String sectionId, String label, String value,
+        {String? serverFallback}) =>
+        generator.row([
+          PosColumn(text: label, width: 8, styles: _footerLabel(sectionId, serverFallback: serverFallback)),
+          PosColumn(text: value, width: 4, styles: _footerValue(sectionId, serverFallback: serverFallback)),
+        ]);
+
     if (printType == 'bill' ||
         printType == 'billing' ||
         printType == 'paid_bill' ||
         printType == 'swiggy_bill') {
-      if (printType != 'swiggy_bill')
-        bytes += generator.row([
-          PosColumn(
-            text: 'Item Total',
-            width: 8,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.restaurantSubTotal,
-                isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-              text:
-                  // '${PriceConverter.convertPrice((orderSubTotal + roomAdvancePay + roomRemainingPay), isHideCurrency: true, asFixed: 2)}',
-                  '${PriceConverter.convertPrice((orderSubTotal ), isHideCurrency: true, asFixed: 2)}',
-              width: 4,
-              styles: styleFunction(
-                  align: PosAlign.right,
-                  name: printConfig.restaurantSubTotal,
-                  isPaperSize80: paperRoll == 80)),
-        ]);
+      if (printType != 'swiggy_bill' && _isVisible('item_total'))
+        bytes += _footerRow(
+          'item_total', 'Item Total',
+          PriceConverter.convertPrice(orderSubTotal, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.restaurantSubTotal,
+        );
 
       if (roomAdvancePay != 0)
         bytes += generator.row([
@@ -2167,227 +2204,55 @@ class PrintByteConvert {
                   name: printConfig.gstParcent,
                   isPaperSize80: paperRoll == 80)),
         ]);
-      if (discount != 0)
+      if (discount != 0 && _isVisible('discount'))
+        bytes += _footerRow(
+          'discount',
+          couponCode != '' ? 'Coupon Discount' : '${profileModel.restaurants!.first.discountText}',
+          PriceConverter.convertPrice(discount, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.discount,
+        );
+      if (couponDiscount != 0 && _isVisible('coupon_discount'))
+        bytes += _footerRow(
+          'coupon_discount', 'Coupon Discount',
+          PriceConverter.convertPrice(couponDiscount, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.discount,
+        );
+      if (couponCode != '' && _isVisible('coupon_discount'))
         bytes += generator.row([
-          PosColumn(
-            text: couponCode != ''
-                ? 'Coupon Discount'
-                : '${profileModel.restaurants!.first.discountText}',
-            width: 8,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: PriceConverter.convertPrice(discount,
-                isHideCurrency: true, asFixed: 2),
-            width: 4,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
+          PosColumn(text: 'Coupon Code', width: 5, styles: _footerLabel('coupon_discount', serverFallback: printConfig.discount)),
+          PosColumn(text: couponCode, width: 7, styles: _footerValue('coupon_discount', serverFallback: printConfig.discount)),
         ]);
-      if (couponDiscount != 0)
-        bytes += generator.row([
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
-            text: 'Coupon Discount',
-            width: 7,
-            styles: styleFunction(
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
-          ),
-          PosColumn(
-            text: PriceConverter.convertPrice(couponDiscount,
-                isHideCurrency: true, asFixed: 2),
-            width: 3,
-            styles: styleFunction(
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      if (couponCode != '')
-        bytes += generator.row([
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
-            text: 'Coupon Code',
-            width: 4,
-            styles: styleFunction(
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
-          ),
-          PosColumn(
-            text: couponCode,
-            width: 6,
-            styles: styleFunction(
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      if (loyaltyUsed != 0) {
-        bytes += generator.row([
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
-            text: 'Used Loyalty Point',
-            width: 7,
-            styles: styleFunction(
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
-          ),
-          PosColumn(
-            text: PriceConverter.convertPrice(loyaltyUsed,
-                isHideCurrency: true, asFixed: 2),
-            width: 3,
-            styles: styleFunction(
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      }
-      if (tips != 0)
-        bytes += generator.row([
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
-            text: 'Add Tips ',
-            width: 7,
-            styles: styleFunction(
-                name: printConfig.tip, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
-          ),
-          PosColumn(
-            text: PriceConverter.convertPrice(tips,
-                isHideCurrency: true, asFixed: 2),
-            width: 3,
-            styles: styleFunction(
-                name: printConfig.tip, isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      if (serviceChargeAmount != 0)
-        bytes += generator.row([
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
-            text:
-                '${Get.find<AuthController>().profileModel!.restaurants!.first.settings!.serviceChrgTaxt ?? 'Service Charge'} ',
-            width: 7,
-            styles: styleFunction(
-                name: printConfig.serviceCharge,
-                isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
-          ),
-          PosColumn(
-            text: PriceConverter.convertPrice(serviceChargeAmount,
-                isHideCurrency: true, asFixed: 2),
-            width: 3,
-            styles: styleFunction(
-                name: printConfig.serviceCharge,
-                isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      if (deliveryCharge != 0)
-        bytes += generator.row([
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
-            text: 'Delivery Charge',
-            width: 7,
-            styles: styleFunction(
-                name: printConfig.deliveryCharge,
-                isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
-          ),
-          PosColumn(
-              text: PriceConverter.convertPrice(deliveryCharge,
-                  isHideCurrency: true, asFixed: 2),
-              width: 3,
-              styles: styleFunction(
-                  name: printConfig.deliveryCharge,
-                  isPaperSize80: paperRoll == 80)),
-        ]);
-        if (packingCharge != 0)
-        bytes += generator.row([
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
-            text: 'Packing Charge',
-            width: 7,
-            styles: styleFunction(
-                name: printConfig.deliveryCharge,
-                isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
-          ),
-          PosColumn(
-              text: PriceConverter.convertPrice(packingCharge,
-                  isHideCurrency: true, asFixed: 2),
-              width: 3,
-              styles: styleFunction(
-                  name: printConfig.deliveryCharge,
-                  isPaperSize80: paperRoll == 80)),
-        ]);
+      if (loyaltyUsed != 0 && _isVisible('loyalty'))
+        bytes += _footerRow(
+          'loyalty', 'Used Loyalty Point',
+          PriceConverter.convertPrice(loyaltyUsed, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.discount,
+        );
+      if (tips != 0 && _isVisible('tips'))
+        bytes += _footerRow(
+          'tips', 'Add Tips',
+          PriceConverter.convertPrice(tips, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.tip,
+        );
+      if (serviceChargeAmount != 0 && _isVisible('service_charge'))
+        bytes += _footerRow(
+          'service_charge',
+          '${Get.find<AuthController>().profileModel!.restaurants!.first.settings!.serviceChrgTaxt ?? 'Service Charge'}',
+          PriceConverter.convertPrice(serviceChargeAmount, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.serviceCharge,
+        );
+      if (deliveryCharge != 0 && _isVisible('delivery_charge'))
+        bytes += _footerRow(
+          'delivery_charge', 'Delivery Charge',
+          PriceConverter.convertPrice(deliveryCharge, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.deliveryCharge,
+        );
+      if (packingCharge != 0 && _isVisible('packing_charge'))
+        bytes += _footerRow(
+          'packing_charge', 'Packing Charge',
+          PriceConverter.convertPrice(packingCharge, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.deliveryCharge,
+        );
 
       if (charge != 0)
         bytes += generator.row([
@@ -2408,163 +2273,69 @@ class PrintByteConvert {
                   name: printConfig.deliveryCharge,
                   isPaperSize80: paperRoll == 80)),
         ]);
-    bytes += generator.row([
-        PosColumn(
-          text: 'Sub Total ',
-          width: 8,
-          styles: styleFunction(
-              align: PosAlign.left,
-              name: printConfig.restaurantSubTotal,
-              isPaperSize80: paperRoll == 80),
-        ),
-        PosColumn(
-            text:
-                '${PriceConverter.convertPrice((subTotalWithoutTax ), isHideCurrency: true, asFixed: 2)}',
-            width: 4,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.restaurantSubTotal,
-                isPaperSize80: paperRoll == 80)),
-      ]);
-      if (swiggyTax != 0) {
-        bytes += generator.row([
-          PosColumn(
-              text: 'Total Tax',
-              width: 8,
-              styles: styleFunction(
-                  align: PosAlign.left,
-                  name: printConfig.gstParcent,
-                  isPaperSize80: paperRoll == 80)),
-          PosColumn(
-            text: PriceConverter.convertPrice(swiggyTax,
-                isHideCurrency: true, asFixed: 2),
-            width: 4,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      }
-      if (gstAmount != 0) {
-        bytes += generator.row([
-          PosColumn(
-              text: 'CGST(2.5%)',
-              width: 8,
-              styles: styleFunction(
-                  align: PosAlign.left,
-                  name: printConfig.gstParcent,
-                  isPaperSize80: paperRoll == 80)),
-          PosColumn(
-            text: PriceConverter.convertPrice(gstAmount / 2,
-                isHideCurrency: true, asFixed: 2),
-            width: 4,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      }
-      if (gstAmount != 0) {
-        bytes += generator.row([
-          PosColumn(
-            text: 'SGST(2.5%)',
-            width: 8,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: PriceConverter.convertPrice(gstAmount / 2,
-                isHideCurrency: true, asFixed: 2),
-            width: 4,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      }
-      if (vatAmount != 0) {
-        bytes += generator.row([
-          PosColumn(
-            text: 'VAT ',
-            width: 8,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.vatParcent, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: PriceConverter.convertPrice(vatAmount,
-                isHideCurrency: true, asFixed: 2),
-            width: 4,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.vatParcent, isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      }
-      if (walletUsed != 0) {
-        bytes += generator.row([
-          PosColumn(
-            text: 'Used Wallet Amount',
-            width: 8,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: PriceConverter.convertPrice(walletUsed,
-                isHideCurrency: true, asFixed: 2),
-            width: 4,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-        ]);
-      }
+      if (_isVisible('subtotal'))
+        bytes += _footerRow(
+          'subtotal', 'Sub Total',
+          PriceConverter.convertPrice(subTotalWithoutTax, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.restaurantSubTotal,
+        );
+      if (swiggyTax != 0)
+        bytes += _footerRow(
+          'cgst', 'Total Tax',
+          PriceConverter.convertPrice(swiggyTax, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.gstParcent,
+        );
+      if (gstAmount != 0 && _isVisible('cgst'))
+        bytes += _footerRow(
+          'cgst', 'CGST(2.5%)',
+          PriceConverter.convertPrice(gstAmount / 2, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.gstParcent,
+        );
+      if (gstAmount != 0 && _isVisible('sgst'))
+        bytes += _footerRow(
+          'sgst', 'SGST(2.5%)',
+          PriceConverter.convertPrice(gstAmount / 2, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.gstParcent,
+        );
+      if (vatAmount != 0 && _isVisible('vat'))
+        bytes += _footerRow(
+          'vat', 'VAT',
+          PriceConverter.convertPrice(vatAmount, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.vatParcent,
+        );
+      if (walletUsed != 0 && _isVisible('wallet'))
+        bytes += _footerRow(
+          'wallet', 'Used Wallet Amount',
+          PriceConverter.convertPrice(walletUsed, isHideCurrency: true, asFixed: 2),
+          serverFallback: printConfig.discount,
+        );
 
       bytes += generator.hr(ch: '....');
-      if (paymentType != '')
+      final _grandTotalText = profileModel.restaurants!.first.isTotalRound == 'Yes'
+          ? '${getRoundUpValue(value: grandTotal)}'
+          : PriceConverter.convertPrice(grandTotal, isHideCurrency: true, asFixed: 2);
+      if (paymentType != '' && _isVisible('payment_type') && _isVisible('grand_total'))
         bytes += generator.row([
           PosColumn(
-            text: 'Payment by : $paymentType',
+            text: 'Payment: $paymentType',
             width: 6,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.restaurantSubTotal,
-                isPaperSize80: paperRoll == 80),
+            styles: _footerLabel('payment_type', serverFallback: printConfig.restaurantSubTotal),
           ),
           PosColumn(
-            text: 'Total: ' +
-                (profileModel.restaurants!.first.isTotalRound == 'Yes'
-                    ? '${getRoundUpValue( value: (grandTotal))}'
-                    : ('${PriceConverter.convertPrice((grandTotal), isHideCurrency: true, asFixed: 2)}')),
+            text: 'Total: $_grandTotalText',
             width: 6,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.restaurantTotalAmount,
-                isPaperSize80: paperRoll == 80),
-          )
+            styles: _footerValue('grand_total', serverFallback: printConfig.restaurantTotalAmount),
+          ),
         ]);
-      if (paymentType == '')
+      if (paymentType != '' && _isVisible('payment_type') && !_isVisible('grand_total'))
+        bytes += _footerRow(
+          'payment_type', 'Payment by', paymentType,
+          serverFallback: printConfig.restaurantSubTotal,
+        );
+      if (_isVisible('grand_total') && (paymentType == '' || !_isVisible('payment_type')))
         bytes += generator.row([
-          PosColumn(
-            text: 'Total: ',
-            width: 6,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.restaurantTotalAmount,
-                isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: (profileModel.restaurants!.first.isTotalRound == 'Yes'
-                  ? '${getRoundUpValue( value: (grandTotal))}'
-                  : ('${PriceConverter.convertPrice((grandTotal), isHideCurrency: true, asFixed: 2)}')),
-            width: 6,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.restaurantTotalAmount,
-                isPaperSize80: paperRoll == 80),
-          )
+          PosColumn(text: 'Total:', width: 6, styles: _footerLabel('grand_total', serverFallback: printConfig.restaurantTotalAmount)),
+          PosColumn(text: _grandTotalText, width: 6, styles: _footerValue('grand_total', serverFallback: printConfig.restaurantTotalAmount)),
         ]);
       if (printType == 'swiggy_bill' ||
           (orderType == 'delivery' && printType != 'paid_bill')) {
