@@ -2097,29 +2097,18 @@ class PrintByteConvert {
       if (printType != 'swiggy_bill')
         bytes += generator.row([
           PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
-            text: 'Item Total ',
-            width: 7,
+            text: 'Item Total',
+            width: 8,
             styles: styleFunction(
+                align: PosAlign.left,
                 name: printConfig.restaurantSubTotal,
                 isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
           ),
           PosColumn(
               text:
                   // '${PriceConverter.convertPrice((orderSubTotal + roomAdvancePay + roomRemainingPay), isHideCurrency: true, asFixed: 2)}',
                   '${PriceConverter.convertPrice((orderSubTotal ), isHideCurrency: true, asFixed: 2)}',
-              width: 3,
+              width: 4,
               styles: styleFunction(
                   align: PosAlign.right,
                   name: printConfig.restaurantSubTotal,
@@ -2185,29 +2174,18 @@ class PrintByteConvert {
       if (discount != 0)
         bytes += generator.row([
           PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
             text: couponCode != ''
                 ? 'Coupon Discount'
-                : '${profileModel.restaurants!.first.discountText} ',
-            width: 7,
+                : '${profileModel.restaurants!.first.discountText}',
+            width: 8,
             styles: styleFunction(
+                align: PosAlign.left,
                 name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
           ),
           PosColumn(
             text: PriceConverter.convertPrice(discount,
                 isHideCurrency: true, asFixed: 2),
-            width: 3,
+            width: 4,
             styles: styleFunction(
                 align: PosAlign.right,
                 name: printConfig.discount, isPaperSize80: paperRoll == 80),
@@ -2418,57 +2396,37 @@ class PrintByteConvert {
       if (charge != 0)
         bytes += generator.row([
           PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
             text: 'Delivery & other charges',
-            width: 7,
+            width: 8,
             styles: styleFunction(
+                align: PosAlign.left,
                 name: printConfig.deliveryCharge,
                 isPaperSize80: paperRoll == 80),
           ),
           PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
-          ),
-          PosColumn(
               text: PriceConverter.convertPrice(charge,
                   isHideCurrency: true, asFixed: 2),
-              width: 3,
+              width: 4,
               styles: styleFunction(
+                  align: PosAlign.right,
                   name: printConfig.deliveryCharge,
                   isPaperSize80: paperRoll == 80)),
         ]);
     bytes += generator.row([
         PosColumn(
-          text: '',
-          width: 1,
-          styles: PosStyles(
-            align: PosAlign.center,
-          ),
-        ),
-        PosColumn(
           text: 'Sub Total ',
-          width: 7,
+          width: 8,
           styles: styleFunction(
+              align: PosAlign.left,
               name: printConfig.restaurantSubTotal,
               isPaperSize80: paperRoll == 80),
         ),
         PosColumn(
-          text: '',
-          width: 1,
-          styles: PosStyles(align: PosAlign.center),
-        ),
-        PosColumn(
             text:
                 '${PriceConverter.convertPrice((subTotalWithoutTax ), isHideCurrency: true, asFixed: 2)}',
-            width: 3,
+            width: 4,
             styles: styleFunction(
+                align: PosAlign.right,
                 name: printConfig.restaurantSubTotal,
                 isPaperSize80: paperRoll == 80)),
       ]);
@@ -2647,15 +2605,26 @@ class PrintByteConvert {
           )
         ]);
       if (paymentType == '')
-        bytes += generator.text(
-          'Total: ' +
-              (profileModel.restaurants!.first.isTotalRound == 'Yes'
+        bytes += generator.row([
+          PosColumn(
+            text: 'Total: ',
+            width: 6,
+            styles: styleFunction(
+                align: PosAlign.left,
+                name: printConfig.restaurantTotalAmount,
+                isPaperSize80: paperRoll == 80),
+          ),
+          PosColumn(
+            text: (profileModel.restaurants!.first.isTotalRound == 'Yes'
                   ? '${getRoundUpValue( value: (grandTotal))}'
                   : ('${PriceConverter.convertPrice((grandTotal), isHideCurrency: true, asFixed: 2)}')),
-          styles: styleFunction(
-              name: printConfig.restaurantTotalAmount,
-              isPaperSize80: paperRoll == 80),
-        );
+            width: 6,
+            styles: styleFunction(
+                align: PosAlign.right,
+                name: printConfig.restaurantTotalAmount,
+                isPaperSize80: paperRoll == 80),
+          )
+        ]);
       if (printType == 'swiggy_bill' ||
           (orderType == 'delivery' && printType != 'paid_bill')) {
         bytes += generator.hr(ch: '....');
