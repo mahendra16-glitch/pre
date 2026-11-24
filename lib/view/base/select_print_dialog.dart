@@ -509,9 +509,14 @@ class _PrintDialogState extends State<PrintDialog> {
                 '')
             : '');
 
-    final bool result = await IosPrintTransport.connect(wifiPrinter: (widget.isBillPrint && isSelectPrinterList[currentPrintIndex] && currentPrintIndex == widget.cartProductList.length) ? NetworkPrinterResolver.billPrinter() : NetworkPrinterResolver.kotPrinterAt(currentPrintIndex), 
+    final bool result = await IosPrintTransport.connect(
+      wifiPrinter: isBill 
+          ? NetworkPrinterResolver.billPrinter() 
+          : NetworkPrinterResolver.kotPrinterAt(currentPrintIndex), 
       macPrinterAddress: macAddress,
     );
+
+    await Future.delayed(const Duration(seconds: 3));
 
     if (!result) {
       isPrinterProccessingList[currentPrintIndex] = false;
