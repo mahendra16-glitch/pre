@@ -1785,8 +1785,6 @@ class _BillingHomeScreenState extends State<BillingHomeScreen> {
                                     ? 15
                                     : 20), () async {
           bytes = [];
-          var isDisconnect =
-          print('is disconnect $isDisconnect');
           currentPrintIndex = currentPrintIndex + 1;
           dataCheck();
         });
