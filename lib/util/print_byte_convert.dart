@@ -2433,28 +2433,16 @@ class PrintByteConvert {
       if (swiggyTax != 0) {
         bytes += generator.row([
           PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
               text: 'Total Tax',
-              width: 7,
+              width: 8,
               styles: styleFunction(
+                  align: PosAlign.left,
                   name: printConfig.gstParcent,
                   isPaperSize80: paperRoll == 80)),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: styleFunction(
-                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
-          ),
           PosColumn(
             text: PriceConverter.convertPrice(swiggyTax,
                 isHideCurrency: true, asFixed: 2),
-            width: 3,
+            width: 4,
             styles: styleFunction(
                 align: PosAlign.right,
                 name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
@@ -2464,28 +2452,16 @@ class PrintByteConvert {
       if (gstAmount != 0) {
         bytes += generator.row([
           PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
               text: 'CGST(2.5%)',
-              width: 7,
+              width: 8,
               styles: styleFunction(
+                  align: PosAlign.left,
                   name: printConfig.gstParcent,
                   isPaperSize80: paperRoll == 80)),
           PosColumn(
-            text: '',
-            width: 1,
-            styles: styleFunction(
-                name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
             text: PriceConverter.convertPrice(gstAmount / 2,
                 isHideCurrency: true, asFixed: 2),
-            width: 3,
+            width: 4,
             styles: styleFunction(
                 align: PosAlign.right,
                 name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
@@ -2495,27 +2471,16 @@ class PrintByteConvert {
       if (gstAmount != 0) {
         bytes += generator.row([
           PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
             text: 'SGST(2.5%)',
-            width: 7,
+            width: 8,
             styles: styleFunction(
+                align: PosAlign.left,
                 name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
           ),
           PosColumn(
             text: PriceConverter.convertPrice(gstAmount / 2,
                 isHideCurrency: true, asFixed: 2),
-            width: 3,
+            width: 4,
             styles: styleFunction(
                 align: PosAlign.right,
                 name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
@@ -2525,28 +2490,18 @@ class PrintByteConvert {
       if (vatAmount != 0) {
         bytes += generator.row([
           PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
             text: 'VAT ',
-            width: 7,
+            width: 8,
             styles: styleFunction(
+                align: PosAlign.left,
                 name: printConfig.vatParcent, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
           ),
           PosColumn(
             text: PriceConverter.convertPrice(vatAmount,
                 isHideCurrency: true, asFixed: 2),
-            width: 3,
+            width: 4,
             styles: styleFunction(
+                align: PosAlign.right,
                 name: printConfig.vatParcent, isPaperSize80: paperRoll == 80),
           ),
         ]);
@@ -2554,28 +2509,18 @@ class PrintByteConvert {
       if (walletUsed != 0) {
         bytes += generator.row([
           PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(
-              align: PosAlign.center,
-            ),
-          ),
-          PosColumn(
             text: 'Used Wallet Amount',
-            width: 7,
+            width: 8,
             styles: styleFunction(
+                align: PosAlign.left,
                 name: printConfig.discount, isPaperSize80: paperRoll == 80),
-          ),
-          PosColumn(
-            text: '',
-            width: 1,
-            styles: PosStyles(align: PosAlign.center),
           ),
           PosColumn(
             text: PriceConverter.convertPrice(walletUsed,
                 isHideCurrency: true, asFixed: 2),
-            width: 3,
+            width: 4,
             styles: styleFunction(
+                align: PosAlign.right,
                 name: printConfig.discount, isPaperSize80: paperRoll == 80),
           ),
         ]);
