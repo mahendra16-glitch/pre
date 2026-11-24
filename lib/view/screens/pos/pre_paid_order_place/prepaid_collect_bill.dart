@@ -2625,7 +2625,7 @@ class _PrePaidCollectBillState extends State<PrePaidCollectBill> {
         await Get.find<LoadingController>()
             .changeText(data: 'Successfully printed!!');
         await Get.find<LoadingController>().changeStatus(data: true);
-        final isDisconnect = await IosPrintTransport.disconnect;
+        final isDisconnect =
         print('is disconnect $isDisconnect');
       });
     } catch (e) {

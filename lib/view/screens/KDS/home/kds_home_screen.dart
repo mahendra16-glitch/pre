@@ -2372,7 +2372,7 @@ class _KDSHomeScreenState extends State<KDSHomeScreen> {
         }
         await Future.delayed(const Duration(seconds: 2));
         bytes.clear();
-        final isDisconnect = await IosPrintTransport.disconnect;
+        final isDisconnect =
         print('is disconnect $isDisconnect');
         print("print test result: $result");
       } else {

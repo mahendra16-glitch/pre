@@ -6509,7 +6509,6 @@ class _OrderManagementScreenState extends State<OrderManagementScreen>
         details: {'stackTrace': s.toString()},
       );
     } finally {
-      await IosPrintTransport.disconnect;
 
       // Carry completer to the next station in the chain.
       if (order != null) {

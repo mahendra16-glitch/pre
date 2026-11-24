@@ -7740,7 +7740,7 @@ class _PrintReportState extends State<PrintReport> {
           .changeText(data: 'Printing failed!!', error: true);
       await Get.find<LoadingController>().changeStatus(data: true);
     } finally {
-      final isDisconnect = await IosPrintTransport.disconnect;
+      final isDisconnect =
       print('is disconnect $isDisconnect');
     }
   }

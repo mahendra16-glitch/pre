@@ -901,7 +901,6 @@ class _ViewTabBillsState extends State<ViewTabBills> {
       } else {
         Future.delayed(Duration(seconds: 10), () async {
           if (Platform.isIOS) {
-            await IosPrintTransport.disconnect;
           } else {
             await PrinterManager.instance.disconnect(
                 type: Get.find<AuthController>().profileModel!.billWifiIp != ''

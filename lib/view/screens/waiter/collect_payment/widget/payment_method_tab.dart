@@ -3000,7 +3000,7 @@ class SelectPaymentMethodTab extends StatelessWidget {
           await Get.find<LoadingController>()
               .changeText(data: 'Successfully printed!!');
           await Get.find<LoadingController>().changeStatus(data: true);
-          var isDisconnect = await IosPrintTransport.disconnect;
+          var isDisconnect =
           print('is disconnect $isDisconnect');
           // }
         });
@@ -3038,7 +3038,7 @@ class SelectPaymentMethodTab extends StatelessWidget {
       await Get.find<LoadingController>()
           .changeText(data: 'Successfully printed!!');
       await Get.find<LoadingController>().changeStatus(data: true);
-      var isDisconnect = await IosPrintTransport.disconnect;
+      var isDisconnect =
       print('is disconnect $isDisconnect');
     });
   }

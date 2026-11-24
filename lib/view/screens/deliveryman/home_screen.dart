@@ -1693,7 +1693,7 @@ class _DeliveyMenHomeScreenState extends State<DeliveyMenHomeScreen> {
           await IosPrintTransport.writeBytes(bytes);
           // Do not assign null to bytes, just clear if needed or leave as is
           Future.delayed(Duration(seconds: 2), () async {
-            var isDisconnect = await IosPrintTransport.disconnect;
+            var isDisconnect =
             print('is disconnect $isDisconnect');
             currentPrintIndex = currentPrintIndex + 1;
             dataCheck(order);

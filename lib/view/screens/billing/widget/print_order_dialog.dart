@@ -862,7 +862,7 @@ class _PrintOrderBillingDialogState extends State<PrintOrderBillingDialog> {
 
           setState(() {});
           bytes = [];
-          var isDisconnect = await IosPrintTransport.disconnect;
+          var isDisconnect =
           print('is disconnect $isDisconnect');
           currentPrintIndex = currentPrintIndex + 1;
           dataCheck();

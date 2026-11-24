@@ -598,7 +598,6 @@ class _PrintDialogState extends State<PrintDialog> {
       // Previously bytes.clear() ran before disconnect, leaving the printer
       // mid-stream on large bills. Also previously disconnect ran immediately
       // without waiting for the flush delay above, cutting the connection early.
-      await IosPrintTransport.disconnect;
       bytes.clear();
 
       currentPrintIndex++;

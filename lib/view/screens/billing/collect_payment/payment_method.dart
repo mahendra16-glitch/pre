@@ -1651,7 +1651,6 @@ class BillingPaymentMethod extends StatelessWidget {
               .changeText(data: 'Successfully printed!!');
           await Get.find<LoadingController>().changeStatus(data: true);
         }
-        await IosPrintTransport.disconnect;
       } catch (_) {}
     } catch (e) {
       if (Get.isRegistered<LoadingController>()) {

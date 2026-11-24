@@ -4970,7 +4970,6 @@ class _CollectPaymentState extends State<CollectPayment> {
       } else {
         Future.delayed(Duration(seconds: 10), () async {
           if (Platform.isIOS) {
-            await IosPrintTransport.disconnect;
           } else {
             if (!GetPlatform.isWindows)
               await PrinterManager.instance.disconnect(
@@ -5674,7 +5673,6 @@ class _CollectPaymentState extends State<CollectPayment> {
         Get.find<KdsController>().setProcessing(false);
         showErrorToast('Failed to bluetooth connect');
       } finally {
-        await IosPrintTransport.disconnect;
       }
     } catch (e) {
       print('Outer print error: $e');

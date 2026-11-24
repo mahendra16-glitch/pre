@@ -10202,7 +10202,7 @@ class _POSCartScreenState extends State<POSCartScreen> {
             .changeText(data: 'Successfully printed!!');
         await Get.find<LoadingController>().changeStatus(data: true);
       }
-      final isDisconnect = await IosPrintTransport.disconnect;
+      final isDisconnect =
       print('is disconnect $isDisconnect');
       if (isBill) {
         Get.find<CartController>().showLoader(false);

@@ -2849,7 +2849,7 @@ class _TabBillDetailPageState extends State<TabBillDetailPage> {
         await Get.find<LoadingController>()
             .changeText(data: 'Successfully printed!!');
         await Get.find<LoadingController>().changeStatus(data: true);
-        var isDisconnect = await IosPrintTransport.disconnect;
+        var isDisconnect =
         print('is disconnect $isDisconnect');
       });
     } catch (e) {

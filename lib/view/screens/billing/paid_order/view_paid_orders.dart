@@ -1095,7 +1095,6 @@ class _ViewBillingPaidOrdersState extends State<ViewBillingPaidOrders> {
                   .changeText(data: 'Successfully printed!!');
               await Get.find<LoadingController>().changeStatus(data: true);
             }
-            await IosPrintTransport.disconnect;
           } catch (_) {}
         });
       } else {

@@ -283,7 +283,7 @@ class _SwiggyPrintDialogState extends State<SwiggyPrintDialog> {
 
           setState(() {});
           bytes = [];
-          var isDisconnect = await IosPrintTransport.disconnect;
+          var isDisconnect =
           print('is disconnect $isDisconnect');
           currentPrintIndex = currentPrintIndex + 1;
           dataCheck();
