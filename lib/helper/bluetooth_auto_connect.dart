@@ -101,7 +101,7 @@ class BluetoothAutoConnect with WidgetsBindingObserver {
         return;
       }
 
-      final isConnected = await PrintBluetoothThermal.connectionStatus;
+      final isConnected = await IosPrintTransport.connectionStatus;
       if (isConnected) {
         return; // Already connected!
       }
@@ -112,7 +112,7 @@ class BluetoothAutoConnect with WidgetsBindingObserver {
       }
 
       log('[BT-AutoConnect] Bluetooth is ON but printer is disconnected. Auto-connecting to $uuid...');
-      final ok = await PrintBluetoothThermal.connect(macPrinterAddress: uuid);
+      final ok = await IosPrintTransport.connect(macPrinterAddress: uuid);
       if (ok) {
         log('[BT-AutoConnect] ✅ Auto-connected to printer $uuid');
         // Tell IosPrintTransport which UUID is now connected so that
