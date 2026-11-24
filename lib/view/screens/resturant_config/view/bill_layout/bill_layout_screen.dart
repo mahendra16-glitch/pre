@@ -215,8 +215,9 @@ class _ReorderableListState extends State<_ReorderableList> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: widget.sections.length,
-      onReorderItem: (oldIndex, newIndex) {
+      onReorder: (oldIndex, newIndex) {
         setState(() {
+          if (newIndex > oldIndex) newIndex--;
           final item = widget.sections.removeAt(oldIndex);
           widget.sections.insert(newIndex, item);
         });
