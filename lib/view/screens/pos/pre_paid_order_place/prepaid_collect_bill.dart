@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:dotted_line/dotted_line.dart';
@@ -2625,8 +2625,6 @@ class _PrePaidCollectBillState extends State<PrePaidCollectBill> {
         await Get.find<LoadingController>()
             .changeText(data: 'Successfully printed!!');
         await Get.find<LoadingController>().changeStatus(data: true);
-        final isDisconnect =
-        print('is disconnect $isDisconnect');
       });
     } catch (e) {
       print('Print error: $e');

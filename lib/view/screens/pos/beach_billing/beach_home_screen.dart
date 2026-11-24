@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
@@ -2600,8 +2600,6 @@ class _BeachBellingHomeScreenState extends State<BeachBellingHomeScreen> {
           await IosPrintTransport.writeBytes(bytes!);
           Future.delayed(Duration(seconds: 2), () async {
             bytes = null;
-            var isDisconnect =
-            print('is disconnect $isDisconnect');
             currentPrintIndex = currentPrintIndex + 1;
             dataCheck(order!);
           });

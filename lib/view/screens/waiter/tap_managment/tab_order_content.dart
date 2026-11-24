@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 import 'package:mygenie_restaurant/controller/auth_controller.dart';
@@ -1956,8 +1956,6 @@ class _TabOrderContentState extends State<TabOrderContent> {
         await Get.find<LoadingController>()
             .changeText(data: 'Successfully printed!!');
         await Get.find<LoadingController>().changeStatus(data: true);
-        var isDisconnect =
-        print('is disconnect $isDisconnect');
       });
     } catch (e) {
       print('Print error: $e');

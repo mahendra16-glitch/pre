@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:dotted_line/dotted_line.dart';
@@ -3000,8 +3000,6 @@ class SelectPaymentMethodTab extends StatelessWidget {
           await Get.find<LoadingController>()
               .changeText(data: 'Successfully printed!!');
           await Get.find<LoadingController>().changeStatus(data: true);
-          var isDisconnect =
-          print('is disconnect $isDisconnect');
           // }
         });
         print("print test result:  $result");
@@ -3038,8 +3036,6 @@ class SelectPaymentMethodTab extends StatelessWidget {
       await Get.find<LoadingController>()
           .changeText(data: 'Successfully printed!!');
       await Get.find<LoadingController>().changeStatus(data: true);
-      var isDisconnect =
-      print('is disconnect $isDisconnect');
     });
   }
 

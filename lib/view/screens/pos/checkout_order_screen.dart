@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
@@ -10202,8 +10202,6 @@ class _POSCartScreenState extends State<POSCartScreen> {
             .changeText(data: 'Successfully printed!!');
         await Get.find<LoadingController>().changeStatus(data: true);
       }
-      final isDisconnect =
-      print('is disconnect $isDisconnect');
       if (isBill) {
         Get.find<CartController>().showLoader(false);
         Get.until((route) =>

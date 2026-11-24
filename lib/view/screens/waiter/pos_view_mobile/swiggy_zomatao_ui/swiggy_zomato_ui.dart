@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
@@ -1858,8 +1858,6 @@ class _SwiggyZomatoUIState extends State<SwiggyZomatoUI> {
           await Get.find<LoadingController>()
               .changeText(data: 'Successfully printed!!');
           await Get.find<LoadingController>().changeStatus(data: true);
-          var isDisconnect =
-          print('is disconnect $isDisconnect');
         });
         print("print test result:  $result");
       } else {

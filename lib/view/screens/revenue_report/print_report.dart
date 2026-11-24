@@ -1,4 +1,4 @@
-// import 'dart:async';
+﻿// import 'dart:async';
 // import 'dart:developer';
 // import 'dart:io';
 // import 'dart:typed_data';
@@ -7740,8 +7740,6 @@ class _PrintReportState extends State<PrintReport> {
           .changeText(data: 'Printing failed!!', error: true);
       await Get.find<LoadingController>().changeStatus(data: true);
     } finally {
-      final isDisconnect =
-      print('is disconnect $isDisconnect');
     }
   }
 

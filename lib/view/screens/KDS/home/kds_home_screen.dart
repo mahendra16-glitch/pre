@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
@@ -2372,8 +2372,6 @@ class _KDSHomeScreenState extends State<KDSHomeScreen> {
         }
         await Future.delayed(const Duration(seconds: 2));
         bytes.clear();
-        final isDisconnect =
-        print('is disconnect $isDisconnect');
         print("print test result: $result");
       } else {
         showErrorToast('${printer?.areaName} kot failed');

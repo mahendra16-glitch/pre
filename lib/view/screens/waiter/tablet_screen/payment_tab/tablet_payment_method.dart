@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:mygenie_restaurant/controller/cart_controller.dart';
 import 'package:mygenie_restaurant/controller/loader_contoller.dart';
@@ -3736,8 +3736,6 @@ class TabletSelectPaymentMethodTab extends StatelessWidget {
         await Get.find<LoadingController>()
             .changeText(data: 'Successfully printed!!');
         await Get.find<LoadingController>().changeStatus(data: true);
-        var isDisconnect =
-        print('is disconnect $isDisconnect');
       });
     } catch (e) {
       print('Print error: $e');
@@ -3770,8 +3768,6 @@ class TabletSelectPaymentMethodTab extends StatelessWidget {
       await Get.find<LoadingController>()
           .changeText(data: 'Successfully printed!!');
       await Get.find<LoadingController>().changeStatus(data: true);
-      var isDisconnect =
-      print('is disconnect $isDisconnect');
     });
   }
 

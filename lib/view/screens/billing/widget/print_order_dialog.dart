@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 import 'package:mygenie_restaurant/data/model/response/cart_model.dart';
@@ -862,8 +862,6 @@ class _PrintOrderBillingDialogState extends State<PrintOrderBillingDialog> {
 
           setState(() {});
           bytes = [];
-          var isDisconnect =
-          print('is disconnect $isDisconnect');
           currentPrintIndex = currentPrintIndex + 1;
           dataCheck();
         });

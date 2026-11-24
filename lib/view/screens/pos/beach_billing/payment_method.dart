@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:mygenie_restaurant/controller/cart_controller.dart';
 import 'package:mygenie_restaurant/controller/loader_contoller.dart';
@@ -1581,8 +1581,6 @@ class BeachBillingPaymentMethod extends StatelessWidget {
           await Get.find<LoadingController>()
               .changeText(data: 'Successfully printed!!');
           await Get.find<LoadingController>().changeStatus(data: true);
-          var isDisconnect =
-          print('is disconnect $isDisconnect');
           if (isPlacedOrder) {
             Get.back();
             Get.find<CartController>().clearCartList();
