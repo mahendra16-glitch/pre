@@ -2034,21 +2034,19 @@ class PrintByteConvert {
         if (addonText != '') {
           // bytes += generator.hr(ch: '....');
           bytes += generator.row([
-            PosColumn(text: '', width: 2, styles: PrinterConfig().foodStyle()),
             PosColumn(
               text: 'Add-Ons :$addonText',
-              width: 6,
+              width: 8,
               styles: styleFunction(
                   align: PosAlign.left,
                   name: printConfig.restaurantFoodList,
                   isPaperSize80: paperRoll == 80),
             ),
-            PosColumn(text: '', width: 1, styles: PrinterConfig().foodStyle()),
             PosColumn(
               text: '',
-              width: 3,
+              width: 4,
               styles: styleFunction(
-                  align: PosAlign.left,
+                  align: PosAlign.right,
                   name: printConfig.restaurantFoodList,
                   isPaperSize80: paperRoll == 80),
             ),
@@ -2057,21 +2055,19 @@ class PrintByteConvert {
         if (food.foodLevelNotes != '') {
           bytes += generator.hr(ch: '....');
           bytes += generator.row([
-            PosColumn(text: '', width: 2, styles: PrinterConfig().foodStyle()),
             PosColumn(
               text: 'Note :${food.foodLevelNotes}',
-              width: 6,
+              width: 8,
               styles: styleFunction(
                   align: PosAlign.left,
                   name: printConfig.restaurantFoodList,
                   isPaperSize80: paperRoll == 80),
             ),
-            PosColumn(text: '', width: 1, styles: PrinterConfig().foodStyle()),
             PosColumn(
               text: '',
-              width: 3,
+              width: 4,
               styles: styleFunction(
-                  align: PosAlign.left,
+                  align: PosAlign.right,
                   name: printConfig.restaurantFoodList,
                   isPaperSize80: paperRoll == 80),
             ),
