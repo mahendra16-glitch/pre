@@ -2121,6 +2121,7 @@ class PrintByteConvert {
                   '${PriceConverter.convertPrice((orderSubTotal ), isHideCurrency: true, asFixed: 2)}',
               width: 3,
               styles: styleFunction(
+                  align: PosAlign.right,
                   name: printConfig.restaurantSubTotal,
                   isPaperSize80: paperRoll == 80)),
         ]);
@@ -2208,6 +2209,7 @@ class PrintByteConvert {
                 isHideCurrency: true, asFixed: 2),
             width: 3,
             styles: styleFunction(
+                align: PosAlign.right,
                 name: printConfig.discount, isPaperSize80: paperRoll == 80),
           ),
         ]);
@@ -2496,6 +2498,7 @@ class PrintByteConvert {
                 isHideCurrency: true, asFixed: 2),
             width: 3,
             styles: styleFunction(
+                align: PosAlign.right,
                 name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
           ),
         ]);
@@ -2526,6 +2529,7 @@ class PrintByteConvert {
                 isHideCurrency: true, asFixed: 2),
             width: 3,
             styles: styleFunction(
+                align: PosAlign.right,
                 name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
           ),
         ]);
@@ -2555,6 +2559,7 @@ class PrintByteConvert {
                 isHideCurrency: true, asFixed: 2),
             width: 3,
             styles: styleFunction(
+                align: PosAlign.right,
                 name: printConfig.gstParcent, isPaperSize80: paperRoll == 80),
           ),
         ]);
