@@ -33,6 +33,7 @@ import 'package:mygenie_restaurant/controller/cart_controller.dart';
 import 'package:mygenie_restaurant/helper/date_converter.dart';
 import 'package:mygenie_restaurant/helper/logo_helper.dart';
 import 'package:mygenie_restaurant/view/screens/waiter/get_printer_ip/get_printer_ip.dart';
+import 'package:mygenie_restaurant/view/screens/resturant_config/view/bill_layout/bill_layout_screen.dart';
 import 'package:mygenie_restaurant/view/screens/waiter/waiter_product_list/widget/product_widget.dart';
 import 'package:mygenie_restaurant/controller/auth_controller.dart';
 import 'package:mygenie_restaurant/controller/kds_controller.dart';
@@ -788,6 +789,27 @@ class _BeachBellingHomeScreenState extends State<BeachBellingHomeScreen> {
                                 ),
                               ),
                             ),
+                          InkWell(
+                            onTap: () async {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              scaffoldKey.currentState?.closeDrawer();
+                              await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const BillLayoutScreen()));
+                            },
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 15, top: 10),
+                                child: Text(
+                                  'Bill / KOT Layout',
+                                  style: poppinsMedium.copyWith(
+                                      fontSize: 13, color: ColorTheme.hintText),
+                                ),
+                              ),
+                            ),
+                          ),
                           InkWell(
                             onTap: () {
                               scaffoldKey.currentState!.closeDrawer();
