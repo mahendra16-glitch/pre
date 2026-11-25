@@ -888,10 +888,17 @@ class _TestPrintSheetState extends State<_TestPrintSheet> {
     bytes += gen.hr();
 
     final gtSec = _sec(cfg.billFooter, 'grand_total');
-    bytes += gen.row([
-      PosColumn(text: 'Grand Total', width: 8, styles: LocalPrintConfigService.labelStyleFromSection(gtSec, isPaperSize80: ip80)),
-      PosColumn(text: '480.00', width: 4, styles: LocalPrintConfigService.valueStyleFromSection(gtSec, isPaperSize80: ip80)),
-    ]);
+    // 'Grand Total' is 11 chars; at size > 1 on 58mm it overflows a row() column.
+    final gtMaxLabel = (8 * (paperRoll == 58 ? 32 : 48) / 12 / (gtSec.size)).floor();
+    if ('Grand Total'.length > gtMaxLabel) {
+      bytes += gen.text('Grand Total', styles: LocalPrintConfigService.labelStyleFromSection(gtSec, isPaperSize80: ip80));
+      bytes += gen.text('480.00', styles: LocalPrintConfigService.valueStyleFromSection(gtSec, isPaperSize80: ip80));
+    } else {
+      bytes += gen.row([
+        PosColumn(text: 'Grand Total', width: 8, styles: LocalPrintConfigService.labelStyleFromSection(gtSec, isPaperSize80: ip80)),
+        PosColumn(text: '480.00', width: 4, styles: LocalPrintConfigService.valueStyleFromSection(gtSec, isPaperSize80: ip80)),
+      ]);
+    }
 
     final pbSec = _sec(cfg.billFooter, 'powered_by');
     bytes += gen.text('Powered by MyGenie',
@@ -904,9 +911,14 @@ class _TestPrintSheetState extends State<_TestPrintSheet> {
         styles: const PosStyles(align: PosAlign.center));
     bytes += gen.hr();
 
+    final kotStationSec = _sec(cfg.kotSections, 'k_station');
+    if (kotStationSec.visible)
+      bytes += gen.text('KITCHEN',
+          styles: LocalPrintConfigService.stylesFromSection(kotStationSec, isPaperSize80: ip80));
     final kotTitleSec = _sec(cfg.kotSections, 'k_title');
-    bytes += gen.text('KOT - KITCHEN',
-        styles: LocalPrintConfigService.stylesFromSection(kotTitleSec, isPaperSize80: ip80));
+    if (kotTitleSec.visible)
+      bytes += gen.text('KOT',
+          styles: LocalPrintConfigService.stylesFromSection(kotTitleSec, isPaperSize80: ip80));
 
     final kotItemSec = _sec(cfg.kotSections, 'k_items');
     bytes += gen.row([

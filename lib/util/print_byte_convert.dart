@@ -2025,11 +2025,23 @@ class PrintByteConvert {
           : styleFunction(align: PosAlign.right, name: serverFallback ?? '', isPaperSize80: paperRoll == 80);
     }
     List<int> _footerRow(String sectionId, String label, String value,
-        {String? serverFallback}) =>
-        generator.row([
-          PosColumn(text: label, width: 8, styles: _footerLabel(sectionId, serverFallback: serverFallback)),
-          PosColumn(text: value, width: 4, styles: _footerValue(sectionId, serverFallback: serverFallback)),
-        ]);
+        {String? serverFallback}) {
+      final sec = _localSection(sectionId);
+      final size = sec?.size ?? 1;
+      // Left column is 8/12 of paper width. At size > 1 each char prints size× wider.
+      final maxLabel = (8 * (paperRoll == 80 ? 48 : 32) / 12 / size).floor();
+      if (label.length > maxLabel) {
+        // Label would overflow: print on two lines instead.
+        return [
+          ...generator.text(label, styles: _footerLabel(sectionId, serverFallback: serverFallback)),
+          ...generator.text(value, styles: _footerValue(sectionId, serverFallback: serverFallback)),
+        ];
+      }
+      return generator.row([
+        PosColumn(text: label, width: 8, styles: _footerLabel(sectionId, serverFallback: serverFallback)),
+        PosColumn(text: value, width: 4, styles: _footerValue(sectionId, serverFallback: serverFallback)),
+      ]);
+    }
 
     if (printType == 'bill' ||
         printType == 'billing' ||
@@ -2208,29 +2220,41 @@ class PrintByteConvert {
       final _grandTotalText = profileModel.restaurants!.first.isTotalRound == 'Yes'
           ? '${getRoundUpValue(value: grandTotal)}'
           : PriceConverter.convertPrice(grandTotal, isHideCurrency: true, asFixed: 2);
-      if (paymentType != '' && _isVisible('payment_type') && _isVisible('grand_total'))
-        bytes += generator.row([
-          PosColumn(
-            text: 'Payment: $paymentType',
-            width: 6,
-            styles: _footerLabel('payment_type', serverFallback: printConfig.restaurantSubTotal),
-          ),
-          PosColumn(
-            text: 'Total: $_grandTotalText',
-            width: 6,
-            styles: _footerValue('grand_total', serverFallback: printConfig.restaurantTotalAmount),
-          ),
-        ]);
+      if (paymentType != '' && _isVisible('payment_type') && _isVisible('grand_total')) {
+        final _gtSec = _localSection('grand_total');
+        final _gtSize = _gtSec?.size ?? 1;
+        final _halfMax = (6 * (paperRoll == 80 ? 48 : 32) / 12 / _gtSize).floor();
+        final _payText = 'Payment: $paymentType';
+        final _totText = 'Total: $_grandTotalText';
+        if (_payText.length > _halfMax || _totText.length > _halfMax) {
+          bytes += generator.text(_payText, styles: _footerLabel('payment_type', serverFallback: printConfig.restaurantSubTotal));
+          bytes += generator.text(_totText, styles: _footerValue('grand_total', serverFallback: printConfig.restaurantTotalAmount));
+        } else {
+          bytes += generator.row([
+            PosColumn(text: _payText, width: 6, styles: _footerLabel('payment_type', serverFallback: printConfig.restaurantSubTotal)),
+            PosColumn(text: _totText, width: 6, styles: _footerValue('grand_total', serverFallback: printConfig.restaurantTotalAmount)),
+          ]);
+        }
+      }
       if (paymentType != '' && _isVisible('payment_type') && !_isVisible('grand_total'))
         bytes += _footerRow(
           'payment_type', 'Payment by', paymentType,
           serverFallback: printConfig.restaurantSubTotal,
         );
-      if (_isVisible('grand_total') && (paymentType == '' || !_isVisible('payment_type')))
-        bytes += generator.row([
-          PosColumn(text: 'Total:', width: 6, styles: _footerLabel('grand_total', serverFallback: printConfig.restaurantTotalAmount)),
-          PosColumn(text: _grandTotalText, width: 6, styles: _footerValue('grand_total', serverFallback: printConfig.restaurantTotalAmount)),
-        ]);
+      if (_isVisible('grand_total') && (paymentType == '' || !_isVisible('payment_type'))) {
+        final _gtSec2 = _localSection('grand_total');
+        final _gtSize2 = _gtSec2?.size ?? 1;
+        final _halfMax2 = (6 * (paperRoll == 80 ? 48 : 32) / 12 / _gtSize2).floor();
+        if ('Total:'.length > _halfMax2 || _grandTotalText.length > _halfMax2) {
+          bytes += generator.text('Total:', styles: _footerLabel('grand_total', serverFallback: printConfig.restaurantTotalAmount));
+          bytes += generator.text(_grandTotalText, styles: _footerValue('grand_total', serverFallback: printConfig.restaurantTotalAmount));
+        } else {
+          bytes += generator.row([
+            PosColumn(text: 'Total:', width: 6, styles: _footerLabel('grand_total', serverFallback: printConfig.restaurantTotalAmount)),
+            PosColumn(text: _grandTotalText, width: 6, styles: _footerValue('grand_total', serverFallback: printConfig.restaurantTotalAmount)),
+          ]);
+        }
+      }
       if (printType == 'swiggy_bill' ||
           (orderType == 'delivery' && printType != 'paid_bill')) {
         bytes += generator.hr(ch: '....');
