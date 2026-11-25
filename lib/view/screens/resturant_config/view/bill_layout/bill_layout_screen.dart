@@ -257,10 +257,10 @@ class _PreviewTabState extends State<_PreviewTab>
   }
 
   // ── font helpers ────────────────────────────────────────────
-  // ESC/POS: size1 = 1×, size2 = 2×, size3 = 3×, size4 = 4× the base glyph.
-  // 80 mm fontA base ≈ 11 sp; 58 mm fontB is ~82% as tall → base ≈ 9 sp.
-  static const _base80 = {1: 11.0, 2: 22.0, 3: 33.0, 4: 44.0};
-  static const _base58 = {1:  9.0, 2: 18.0, 3: 27.0, 4: 36.0};
+  // Preview size scale — each step is roughly ×1.3 the previous (gentle climb).
+  // 80 mm fontA base ≈ 11 sp; 58 mm fontB base ≈ 9 sp.
+  static const _base80 = {1: 11.0, 2: 14.0, 3: 18.0, 4: 24.0};
+  static const _base58 = {1:  9.0, 2: 12.0, 3: 15.0, 4: 20.0};
 
   double _fs(int size) =>
       (_is80mm ? _base80 : _base58)[size.clamp(1, 4)] ?? 11.0;
