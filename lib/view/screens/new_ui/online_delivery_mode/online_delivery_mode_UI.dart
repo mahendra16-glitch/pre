@@ -95,6 +95,7 @@ import 'package:mygenie_restaurant/view/screens/settlement/screen/settlement_scr
 import 'package:mygenie_restaurant/view/screens/swiggy_zomato/date_wise_orderlist.dart';
 import 'package:mygenie_restaurant/view/screens/customer_management/customer_management.dart';
 import 'package:mygenie_restaurant/view/screens/waiter/get_printer_ip/get_printer_ip.dart';
+import 'package:mygenie_restaurant/view/screens/resturant_config/view/bill_layout/bill_layout_screen.dart';
 import 'package:mygenie_restaurant/view/screens/paid_order/view_paid_orders.dart';
 import 'package:mygenie_restaurant/view/screens/waiter/room_managment/room_orders.dart';
 import 'package:mygenie_restaurant/view/screens/waiter/tablet_screen/tablet_product_list/tablet_waiter_product_list.dart';
@@ -4910,6 +4911,27 @@ class _OrderManagementScreenState extends State<OrderManagementScreen>
                       ),
                     ),
                   ),
+                InkWell(
+                  onTap: () async {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    scaffoldKey.currentState?.closeDrawer();
+                    await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const BillLayoutScreen()));
+                  },
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 15, top: 10),
+                      child: Text(
+                        'Bill / KOT Layout',
+                        style: poppinsMedium.copyWith(
+                            fontSize: 13, color: ColorTheme.hintText),
+                      ),
+                    ),
+                  ),
+                ),
                 InkWell(
                   onTap: () {
                     scaffoldKey.currentState?.closeDrawer();
