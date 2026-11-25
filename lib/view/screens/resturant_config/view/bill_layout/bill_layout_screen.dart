@@ -227,20 +227,31 @@ class _KotTab extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Preview tab — live receipt simulation
+// Preview tab — live receipt simulation with paper-size toggle
 // ─────────────────────────────────────────────────────────────
-class _PreviewTab extends StatelessWidget {
+
+// ESC/POS 80 mm paper: ~48 chars/line using fontA (12-dot glyphs, ~203 DPI)
+// ESC/POS 58 mm paper: ~32 chars/line using fontB (9-dot glyphs, ~203 DPI)
+// fontB ≈ 9/12 = 75 % the width of fontA — we scale base font to match.
+
+class _PreviewTab extends StatefulWidget {
   final BillLayoutConfig config;
   const _PreviewTab({required this.config});
 
-  static double _fontSize(int size) {
-    switch (size) {
-      case 2: return 14;
-      case 3: return 18;
-      case 4: return 22;
-      default: return 11;
-    }
-  }
+  @override
+  State<_PreviewTab> createState() => _PreviewTabState();
+}
+
+class _PreviewTabState extends State<_PreviewTab> {
+  bool _is80mm = true;
+
+  // ── font helpers ────────────────────────────────────────────
+  // 80 mm fontA base sizes; 58 mm fontB is 75 % as wide → scale down.
+  static const _base80 = {1: 11.0, 2: 14.0, 3: 18.0, 4: 22.0};
+  static const _base58 = {1:  9.0, 2: 11.5, 3: 14.5, 4: 18.0};
+
+  double _fs(int size) =>
+      (_is80mm ? _base80 : _base58)[size.clamp(1, 4)] ?? 11.0;
 
   static TextAlign _align(String a) {
     switch (a) {
@@ -250,28 +261,27 @@ class _PreviewTab extends StatelessWidget {
     }
   }
 
+  TextStyle _style(BillSectionConfig s) => TextStyle(
+        fontFamily: 'Courier',
+        fontSize: _fs(s.size),
+        fontWeight: s.bold ? FontWeight.bold : FontWeight.normal,
+        color: Colors.black87,
+      );
+
   BillSectionConfig _sec(List<BillSectionConfig> list, String id) =>
       list.firstWhere((s) => s.id == id,
           orElse: () => BillSectionConfig(id: id, label: id));
+
+  // ── row builders ────────────────────────────────────────────
 
   Widget _line(BillSectionConfig s, String text) {
     if (!s.visible) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text(
-        text,
-        textAlign: _align(s.align),
-        style: TextStyle(
-          fontFamily: 'Courier',
-          fontSize: _fontSize(s.size),
-          fontWeight: s.bold ? FontWeight.bold : FontWeight.normal,
-          color: Colors.black87,
-        ),
-      ),
+      child: Text(text, textAlign: _align(s.align), style: _style(s)),
     );
   }
 
-  // Two columns in fixed ratio (simulates row() on 80mm)
   Widget _twoCol(
     BillSectionConfig s,
     String left, String right, {
@@ -279,56 +289,50 @@ class _PreviewTab extends StatelessWidget {
     bool rightBold = false,
   }) {
     if (!s.visible) return const SizedBox.shrink();
-    final fs = _fontSize(s.size);
-    final style = TextStyle(
-      fontFamily: 'Courier',
-      fontSize: fs,
-      fontWeight: s.bold ? FontWeight.bold : FontWeight.normal,
-      color: Colors.black87,
-    );
-    final rightStyle = style.copyWith(
-      fontWeight: rightBold ? FontWeight.bold : style.fontWeight,
-    );
+    final base = _style(s);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(children: [
-        Expanded(flex: leftFlex, child: Text(left, style: style, textAlign: TextAlign.left)),
-        Expanded(flex: rightFlex, child: Text(right, style: rightStyle, textAlign: TextAlign.right)),
+        Expanded(flex: leftFlex,  child: Text(left,  style: base, textAlign: TextAlign.left,  overflow: TextOverflow.ellipsis)),
+        Expanded(flex: rightFlex, child: Text(right, style: base.copyWith(fontWeight: rightBold ? FontWeight.bold : base.fontWeight), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis)),
       ]),
     );
   }
 
-  // Three columns: name / qty / price
-  Widget _itemRow(BillSectionConfig s, String name, String qty, String price) {
+  Widget _itemRow(BillSectionConfig s, String name, String qty, String price, {bool header = false}) {
     if (!s.visible) return const SizedBox.shrink();
-    final fs = _fontSize(s.size);
-    final style = TextStyle(
-      fontFamily: 'Courier',
-      fontSize: fs,
-      fontWeight: s.bold ? FontWeight.bold : FontWeight.normal,
-      color: Colors.black87,
-    );
+    final base0 = _style(s);
+    final base = header ? base0.copyWith(fontWeight: FontWeight.bold) : base0;
+    // 58 mm: 3-col layout is tighter — reduce item name column slightly
+    final nameFlex = _is80mm ? 7 : 6;
+    final qtyFlex  = _is80mm ? 2 : 2;
+    final priceFlex = _is80mm ? 3 : 4;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(children: [
-        Expanded(flex: 7, child: Text(name, style: style, textAlign: TextAlign.left)),
-        Expanded(flex: 2, child: Text(qty, style: style, textAlign: TextAlign.left)),
-        Expanded(flex: 3, child: Text(price, style: style, textAlign: TextAlign.right)),
+        Expanded(flex: nameFlex,  child: Text(name,  style: base, textAlign: TextAlign.left,  overflow: TextOverflow.ellipsis)),
+        Expanded(flex: qtyFlex,   child: Text(qty,   style: base, textAlign: TextAlign.left)),
+        Expanded(flex: priceFlex, child: Text(price, style: base, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis)),
       ]),
     );
   }
 
   Widget _hr() => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Divider(height: 1, color: Colors.black54),
+        child: const Divider(height: 1, color: Colors.black54),
       );
 
-  Widget _dottedHr() => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Text('- - - - - - - - - - - - - - - - - - - - -',
-            style: TextStyle(fontFamily: 'Courier', fontSize: 10, color: Colors.black38),
-            overflow: TextOverflow.clip),
-      );
+  Widget _dottedHr() {
+    // 80 mm ≈ 48 dashes at size 1; 58 mm ≈ 32 dashes
+    final dashes = _is80mm ? '- ' * 24 : '- ' * 16;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Text(dashes,
+          style: TextStyle(fontFamily: 'Courier', fontSize: _is80mm ? 10.0 : 8.5, color: Colors.black38),
+          overflow: TextOverflow.clip,
+          maxLines: 1),
+    );
+  }
 
   String _restaurantName() {
     try {
@@ -338,118 +342,133 @@ class _PreviewTab extends StatelessWidget {
     }
   }
 
-  Widget _billReceipt() {
-    final bh = config.billHeader;
-    final bf = config.billFooter;
-    final itemSec = _sec(bh, 'bill_items');
+  // ── receipt contents ────────────────────────────────────────
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _line(_sec(bh, 'restaurant_name'), _restaurantName()),
-        _line(_sec(bh, 'address'), '123, Sample Street, City'),
-        _line(_sec(bh, 'phone'), '+91 98765 43210'),
-        _line(_sec(bh, 'gst'), 'GST: 27AABCU9603R1ZX'),
-        _line(_sec(bh, 'fssai'), 'FSSAI: 12345678901234'),
-        _hr(),
-        _twoCol(_sec(bh, 'order_id'),   'Bill No: 1042',      'Date: 25-Nov',    leftFlex: 7, rightFlex: 5),
-        _twoCol(_sec(bh, 'order_type'), 'Dine In',            'Waiter: Ravi',    leftFlex: 6, rightFlex: 6),
-        _twoCol(_sec(bh, 'customer_name'), 'Rahul Kumar',     '+91 99999 00000', leftFlex: 6, rightFlex: 6),
-        if (_sec(bh, 'table_number').visible)
-          _line(_sec(bh, 'table_number'), 'TABLE  T-5'),
-        _hr(),
-        // Item header
-        if (itemSec.visible) ...[
-          _itemRow(itemSec.copyWith(bold: true), 'Item', 'Qty', 'Price'),
-          _dottedHr(),
-          _itemRow(itemSec, 'Paneer Butter Masala', '1', '₹240'),
-          _itemRow(itemSec, 'Butter Naan', '2', '₹80'),
-          _itemRow(itemSec, 'Veg Biryani', '1', '₹180'),
-        ],
-        _hr(),
-        _twoCol(_sec(bf, 'item_total'),       'Item Total',        '₹500'),
-        _twoCol(_sec(bf, 'discount'),         'Discount',          '-₹25'),
-        _twoCol(_sec(bf, 'coupon_discount'),  'Coupon Discount',   '-₹10'),
-        _twoCol(_sec(bf, 'loyalty'),          'Loyalty Points',    '-₹5'),
-        _twoCol(_sec(bf, 'wallet'),           'Wallet Used',       '-₹0'),
-        _twoCol(_sec(bf, 'tips'),             'Tips',              '₹20'),
-        _twoCol(_sec(bf, 'service_charge'),   'Service Charge',    '₹25'),
-        _twoCol(_sec(bf, 'delivery_charge'),  'Delivery Charge',   '₹0'),
-        _twoCol(_sec(bf, 'packing_charge'),   'Packing Charge',    '₹10'),
-        _twoCol(_sec(bf, 'subtotal'),         'Subtotal',          '₹515'),
-        _twoCol(_sec(bf, 'cgst'),             'CGST (2.5%)',        '₹12.88'),
-        _twoCol(_sec(bf, 'sgst'),             'SGST (2.5%)',        '₹12.88'),
-        _twoCol(_sec(bf, 'vat'),              'VAT',               '₹0'),
-        _hr(),
-        _twoCol(_sec(bf, 'grand_total'),      'GRAND TOTAL',       '₹540.76', leftFlex: 7, rightFlex: 5, rightBold: true),
-        _hr(),
-        _twoCol(_sec(bf, 'payment_type'),     'Payment',           'Cash'),
-        _line(_sec(bf, 'powered_by'), 'Powered by MyGenie'),
+  Widget _billReceipt() {
+    final bh = widget.config.billHeader;
+    final bf = widget.config.billFooter;
+    final itemSec = _sec(bh, 'bill_items');
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _line(_sec(bh, 'restaurant_name'), _restaurantName()),
+      _line(_sec(bh, 'address'), '123, Sample Street, City'),
+      _line(_sec(bh, 'phone'), '+91 98765 43210'),
+      _line(_sec(bh, 'gst'),   'GST: 27AABCU9603R1ZX'),
+      _line(_sec(bh, 'fssai'), 'FSSAI: 12345678901234'),
+      _hr(),
+      _twoCol(_sec(bh, 'order_id'),      'Bill No: 1042', 'Date: 25-Nov',     leftFlex: 7, rightFlex: 5),
+      _twoCol(_sec(bh, 'order_type'),    'Dine In',       'Waiter: Ravi',     leftFlex: 6, rightFlex: 6),
+      _twoCol(_sec(bh, 'customer_name'), 'Rahul Kumar',   '+91 99999 00000',  leftFlex: 6, rightFlex: 6),
+      if (_sec(bh, 'table_number').visible) _line(_sec(bh, 'table_number'), 'TABLE  T-5'),
+      _hr(),
+      if (itemSec.visible) ...[
+        _itemRow(itemSec, 'Item', 'Qty', 'Price', header: true),
+        _dottedHr(),
+        _itemRow(itemSec, 'Paneer Butter Masala', '1', '₹240'),
+        _itemRow(itemSec, 'Butter Naan',          '2', '₹80'),
+        _itemRow(itemSec, 'Veg Biryani',          '1', '₹180'),
       ],
-    );
+      _hr(),
+      _twoCol(_sec(bf, 'item_total'),      'Item Total',      '₹500'),
+      _twoCol(_sec(bf, 'discount'),        'Discount',        '-₹25'),
+      _twoCol(_sec(bf, 'coupon_discount'), 'Coupon Discount', '-₹10'),
+      _twoCol(_sec(bf, 'loyalty'),         'Loyalty Points',  '-₹5'),
+      _twoCol(_sec(bf, 'wallet'),          'Wallet Used',     '-₹0'),
+      _twoCol(_sec(bf, 'tips'),            'Tips',            '₹20'),
+      _twoCol(_sec(bf, 'service_charge'),  'Service Charge',  '₹25'),
+      _twoCol(_sec(bf, 'delivery_charge'), 'Delivery Charge', '₹0'),
+      _twoCol(_sec(bf, 'packing_charge'),  'Packing Charge',  '₹10'),
+      _twoCol(_sec(bf, 'subtotal'),        'Subtotal',        '₹515'),
+      _twoCol(_sec(bf, 'cgst'),            'CGST (2.5%)',     '₹12.88'),
+      _twoCol(_sec(bf, 'sgst'),            'SGST (2.5%)',     '₹12.88'),
+      _twoCol(_sec(bf, 'vat'),             'VAT',             '₹0'),
+      _hr(),
+      _twoCol(_sec(bf, 'grand_total'),  'GRAND TOTAL', '₹540.76', leftFlex: 7, rightFlex: 5, rightBold: true),
+      _hr(),
+      _twoCol(_sec(bf, 'payment_type'), 'Payment', 'Cash'),
+      _line(_sec(bf, 'powered_by'), 'Powered by MyGenie'),
+    ]);
   }
 
   Widget _kotReceipt() {
-    final ks = config.kotSections;
+    final ks = widget.config.kotSections;
     final itemSec = _sec(ks, 'k_items');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _line(_sec(ks, 'k_station'), 'KITCHEN'),
-        _line(_sec(ks, 'k_title'), 'KOT'),
-        _hr(),
-        _twoCol(_sec(ks, 'k_order_id'), 'Order: #1042', '25-Nov 1:30PM', leftFlex: 6, rightFlex: 6),
-        _twoCol(_sec(ks, 'k_order_type'), 'Dine In', 'Waiter: Ravi', leftFlex: 6, rightFlex: 6),
-        _line(_sec(ks, 'k_customer'), 'Rahul Kumar'),
-        if (_sec(ks, 'k_table').visible)
-          _line(_sec(ks, 'k_table'), 'TABLE  T-5'),
-        _hr(),
-        if (itemSec.visible) ...[
-          _itemRow(itemSec.copyWith(bold: true), 'Item', 'Qty', ''),
-          _dottedHr(),
-          _itemRow(itemSec, 'Paneer Butter Masala', 'x1', ''),
-          _itemRow(itemSec, 'Butter Naan', 'x2', ''),
-        ],
-        _hr(),
-        if (_sec(ks, 'k_note').visible)
-          _line(_sec(ks, 'k_note'), 'Note: Less spicy please'),
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _line(_sec(ks, 'k_station'), 'KITCHEN'),
+      _line(_sec(ks, 'k_title'),   'KOT'),
+      _hr(),
+      _twoCol(_sec(ks, 'k_order_id'),   'Order: #1042', '25-Nov 1:30PM', leftFlex: 6, rightFlex: 6),
+      _twoCol(_sec(ks, 'k_order_type'), 'Dine In',      'Waiter: Ravi',  leftFlex: 6, rightFlex: 6),
+      _line(_sec(ks, 'k_customer'), 'Rahul Kumar'),
+      if (_sec(ks, 'k_table').visible) _line(_sec(ks, 'k_table'), 'TABLE  T-5'),
+      _hr(),
+      if (itemSec.visible) ...[
+        _itemRow(itemSec, 'Item', 'Qty', '', header: true),
+        _dottedHr(),
+        _itemRow(itemSec, 'Paneer Butter Masala', 'x1', ''),
+        _itemRow(itemSec, 'Butter Naan',          'x2', ''),
       ],
-    );
+      _hr(),
+      if (_sec(ks, 'k_note').visible)
+        _line(_sec(ks, 'k_note'), 'Note: Less spicy please'),
+    ]);
+  }
+
+  // ── paper-size ruler ────────────────────────────────────────
+  // 80 mm printable area ≈ 72 mm; 58 mm ≈ 48 mm
+  // We fill the available width for 80 mm and scale 58 mm proportionally.
+
+  Widget _receipt(String label, IconData icon, Widget body, double receiptW) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _SectionHeader(title: label, icon: icon),
+      const SizedBox(height: 8),
+      Align(
+        alignment: Alignment.topCenter,
+        child: Container(
+          width: receiptW,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.grey.shade300),
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+          ),
+          child: body,
+        ),
+      ),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Max width available minus outer padding
+    final screenW = MediaQuery.of(context).size.width;
+    final maxW = (screenW - 32).clamp(200.0, 420.0);
+    // 80 mm receipt takes all available; 58 mm is 58/80 ≈ 72.5 % as wide
+    final receiptW = _is80mm ? maxW : maxW * 58 / 80;
+
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        // Bill preview
-        _SectionHeader(title: 'Bill preview', icon: Icons.receipt_long),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade200),
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))],
-          ),
-          child: _billReceipt(),
+        // ── paper-size toggle ──────────────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Paper size:', style: montserratMedium.copyWith(fontSize: 13, color: Colors.black54)),
+            const SizedBox(width: 10),
+            _PaperChip(label: '80 mm', selected: _is80mm,  onTap: () => setState(() => _is80mm = true)),
+            const SizedBox(width: 6),
+            _PaperChip(label: '58 mm', selected: !_is80mm, onTap: () => setState(() => _is80mm = false)),
+          ],
         ),
+        // ── paper width ruler ──────────────────────────────────
+        const SizedBox(height: 8),
+        _PaperRuler(receiptW: receiptW, maxW: maxW, is80mm: _is80mm),
+        const SizedBox(height: 16),
+        // ── bill ──────────────────────────────────────────────
+        _receipt('Bill preview', Icons.receipt_long, _billReceipt(), receiptW),
         const SizedBox(height: 20),
-        // KOT preview
-        _SectionHeader(title: 'KOT preview', icon: Icons.kitchen),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade200),
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))],
-          ),
-          child: _kotReceipt(),
-        ),
+        // ── KOT ───────────────────────────────────────────────
+        _receipt('KOT preview', Icons.kitchen, _kotReceipt(), receiptW),
         const SizedBox(height: 12),
         Center(
           child: Text(
@@ -460,6 +479,84 @@ class _PreviewTab extends StatelessWidget {
         ),
         const SizedBox(height: 16),
       ],
+    );
+  }
+}
+
+// Small chip for paper-size toggle
+class _PaperChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _PaperChip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? ColorTheme.appColor : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? ColorTheme.appColor : Colors.grey.shade300),
+        ),
+        child: Text(
+          label,
+          style: montserratSemiBold.copyWith(
+            fontSize: 13,
+            color: selected ? Colors.white : Colors.grey,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Visual ruler showing the paper width proportionally
+class _PaperRuler extends StatelessWidget {
+  final double receiptW;
+  final double maxW;
+  final bool is80mm;
+  const _PaperRuler({required this.receiptW, required this.maxW, required this.is80mm});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 20,
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          // background full-width bar
+          Container(
+            width: maxW,
+            height: 6,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          // active width bar
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            width: receiptW,
+            height: 6,
+            decoration: BoxDecoration(
+              color: ColorTheme.appColor.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          // label
+          Positioned(
+            left: receiptW + 6,
+            child: Text(
+              is80mm ? '80 mm' : '58 mm',
+              style: montserratRegular.copyWith(fontSize: 10, color: ColorTheme.appColor),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
