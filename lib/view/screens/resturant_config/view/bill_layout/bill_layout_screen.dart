@@ -843,94 +843,171 @@ class _TestPrintSheet extends StatefulWidget {
 
 class _TestPrintSheetState extends State<_TestPrintSheet> {
   int? _printingIndex;
+  bool _billMode = true; // true = Bill test, false = KOT test
 
-  Future<List<int>> _buildBytes(RestaurantPrinterNew printer) async {
+  BillSectionConfig _sec(List<BillSectionConfig> list, String id) =>
+      list.firstWhere((s) => s.id == id,
+          orElse: () => BillSectionConfig(id: id, label: id));
+
+  String get _restaurantName =>
+      Get.find<AuthController>().profileModel?.restaurants?.firstOrNull?.name ??
+      'Restaurant';
+
+  // ── Bill test ────────────────────────────────────────────────
+  Future<List<int>> _buildBillBytes(RestaurantPrinterNew printer) async {
     final paperRoll = printer.printerPaperRoll == 58 ? 58 : 80;
-    final paperSize = paperRoll == 58 ? PaperSize.mm58 : PaperSize.mm80;
-    final profile = await CapabilityProfile.load();
-    final gen = Generator(paperSize, profile);
-    final cfg = widget.config;
     final ip80 = paperRoll == 80;
+    final lineChars = ip80 ? 48 : 32;
+    final gen = Generator(
+        paperRoll == 58 ? PaperSize.mm58 : PaperSize.mm80,
+        await CapabilityProfile.load());
+    final bh = widget.config.billHeader;
+    final bf = widget.config.billFooter;
     List<int> bytes = [];
 
-    BillSectionConfig _sec(List<BillSectionConfig> list, String id) =>
-        list.firstWhere((s) => s.id == id,
-            orElse: () => BillSectionConfig(id: id, label: id));
-
-    final restaurantName = Get.find<AuthController>()
-            .profileModel
-            ?.restaurants
-            ?.firstOrNull
-            ?.name ??
-        'Restaurant';
-
-    // ── Bill test ──────────────────────────────────────────────
-    final nameSec = _sec(cfg.billHeader, 'restaurant_name');
-    bytes += gen.text(restaurantName,
-        styles: LocalPrintConfigService.stylesFromSection(nameSec, isPaperSize80: ip80));
-    bytes += gen.hr();
-    bytes += gen.text('-- BILL LAYOUT TEST --',
-        styles: const PosStyles(align: PosAlign.center));
-    bytes += gen.hr();
-
-    final itemSec = _sec(cfg.billHeader, 'bill_items');
-    bytes += gen.row([
-      PosColumn(text: 'Item', width: 7, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left, isPaperSize80: ip80)),
-      PosColumn(text: 'Qty', width: 2, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left, isPaperSize80: ip80)),
-      PosColumn(text: 'Price', width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.right, isPaperSize80: ip80)),
-    ]);
-    bytes += gen.hr(ch: '--');
-    bytes += gen.row([
-      PosColumn(text: 'Sample Item', width: 7, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left, isPaperSize80: ip80)),
-      PosColumn(text: '2', width: 2, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left, isPaperSize80: ip80)),
-      PosColumn(text: '240.00', width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.right, isPaperSize80: ip80)),
-    ]);
-    bytes += gen.hr();
-
-    final gtSec = _sec(cfg.billFooter, 'grand_total');
-    // 'Grand Total' is 11 chars; at size > 1 on 58mm it overflows a row() column.
-    final gtMaxLabel = (8 * (paperRoll == 58 ? 32 : 48) / 12 / (gtSec.size)).floor();
-    if ('Grand Total'.length > gtMaxLabel) {
-      bytes += gen.text('Grand Total', styles: LocalPrintConfigService.labelStyleFromSection(gtSec, isPaperSize80: ip80));
-      bytes += gen.text('480.00', styles: LocalPrintConfigService.valueStyleFromSection(gtSec, isPaperSize80: ip80));
-    } else {
-      bytes += gen.row([
-        PosColumn(text: 'Grand Total', width: 8, styles: LocalPrintConfigService.labelStyleFromSection(gtSec, isPaperSize80: ip80)),
-        PosColumn(text: '480.00', width: 4, styles: LocalPrintConfigService.valueStyleFromSection(gtSec, isPaperSize80: ip80)),
+    // Footer row with overflow guard
+    List<int> fr(BillSectionConfig sec, String label, String value) {
+      if (!sec.visible) return [];
+      final maxLabel = (8 * lineChars / 12 / sec.size).floor();
+      if (label.length > maxLabel) {
+        return [
+          ...gen.text(label, styles: LocalPrintConfigService.labelStyleFromSection(sec, isPaperSize80: ip80)),
+          ...gen.text(value, styles: LocalPrintConfigService.valueStyleFromSection(sec, isPaperSize80: ip80)),
+        ];
+      }
+      return gen.row([
+        PosColumn(text: label, width: 8, styles: LocalPrintConfigService.labelStyleFromSection(sec, isPaperSize80: ip80)),
+        PosColumn(text: value, width: 4, styles: LocalPrintConfigService.valueStyleFromSection(sec, isPaperSize80: ip80)),
       ]);
     }
 
-    final pbSec = _sec(cfg.billFooter, 'powered_by');
-    bytes += gen.text('Powered by MyGenie',
-        styles: LocalPrintConfigService.stylesFromSection(pbSec, isPaperSize80: ip80));
+    // Two-column header row
+    List<int> twoCol(BillSectionConfig sec, String left, String right, {int lw = 7, int rw = 5}) {
+      if (!sec.visible) return [];
+      return gen.row([
+        PosColumn(text: left,  width: lw, styles: LocalPrintConfigService.stylesFromSectionWithAlign(sec, PosAlign.left,  isPaperSize80: ip80)),
+        PosColumn(text: right, width: rw, styles: LocalPrintConfigService.stylesFromSectionWithAlign(sec, PosAlign.right, isPaperSize80: ip80)),
+      ]);
+    }
 
-    // ── KOT test ───────────────────────────────────────────────
-    bytes += gen.feed(1);
+    void txt(BillSectionConfig sec, String text) {
+      if (sec.visible)
+        bytes += gen.text(text, styles: LocalPrintConfigService.stylesFromSection(sec, isPaperSize80: ip80));
+    }
+
+    txt(_sec(bh, 'restaurant_name'), _restaurantName);
+    txt(_sec(bh, 'address'),  '123, Sample Street, City');
+    txt(_sec(bh, 'phone'),    '+91 98765 43210');
+    txt(_sec(bh, 'gst'),     'GST: 27AABCU9603R1ZX');
+    txt(_sec(bh, 'fssai'),   'FSSAI: 12345678901234');
     bytes += gen.hr();
-    bytes += gen.text('-- KOT LAYOUT TEST --',
-        styles: const PosStyles(align: PosAlign.center));
+    bytes += twoCol(_sec(bh, 'order_id'),      'Bill No: 1042', '25-Nov');
+    bytes += twoCol(_sec(bh, 'order_type'),    'Dine In',       'Waiter: Ravi');
+    bytes += twoCol(_sec(bh, 'customer_name'), 'Rahul Kumar',   '+91 99999 00000');
+    txt(_sec(bh, 'table_number'), 'TABLE  T-5');
     bytes += gen.hr();
 
-    final kotStationSec = _sec(cfg.kotSections, 'k_station');
-    if (kotStationSec.visible)
-      bytes += gen.text('KITCHEN',
-          styles: LocalPrintConfigService.stylesFromSection(kotStationSec, isPaperSize80: ip80));
-    final kotTitleSec = _sec(cfg.kotSections, 'k_title');
-    if (kotTitleSec.visible)
-      bytes += gen.text('KOT',
-          styles: LocalPrintConfigService.stylesFromSection(kotTitleSec, isPaperSize80: ip80));
+    final itemSec = _sec(bh, 'bill_items');
+    if (itemSec.visible) {
+      bytes += gen.row([
+        PosColumn(text: 'Item',  width: 7, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left,  isPaperSize80: ip80)),
+        PosColumn(text: 'Qty',   width: 2, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left,  isPaperSize80: ip80)),
+        PosColumn(text: 'Price', width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.right, isPaperSize80: ip80)),
+      ]);
+      bytes += gen.hr(ch: '--');
+      for (final row in [['Paneer Masala', '1', '240.00'], ['Butter Naan', '2', '80.00']]) {
+        bytes += gen.row([
+          PosColumn(text: row[0], width: 7, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left,  isPaperSize80: ip80)),
+          PosColumn(text: row[1], width: 2, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left,  isPaperSize80: ip80)),
+          PosColumn(text: row[2], width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.right, isPaperSize80: ip80)),
+        ]);
+      }
+    }
+    bytes += gen.hr();
+    bytes += fr(_sec(bf, 'item_total'),      'Item Total',      '500.00');
+    bytes += fr(_sec(bf, 'discount'),        'Discount',        '-25.00');
+    bytes += fr(_sec(bf, 'coupon_discount'), 'Coupon Discount', '-10.00');
+    bytes += fr(_sec(bf, 'loyalty'),         'Loyalty Points',  '-5.00');
+    bytes += fr(_sec(bf, 'wallet'),          'Wallet Used',     '-0.00');
+    bytes += fr(_sec(bf, 'tips'),            'Tips',            '20.00');
+    bytes += fr(_sec(bf, 'service_charge'),  'Service Charge',  '25.00');
+    bytes += fr(_sec(bf, 'delivery_charge'), 'Delivery Charge', '0.00');
+    bytes += fr(_sec(bf, 'packing_charge'),  'Packing Charge',  '10.00');
+    bytes += fr(_sec(bf, 'subtotal'),        'Subtotal',        '515.00');
+    bytes += fr(_sec(bf, 'cgst'),            'CGST (2.5%)',     '12.88');
+    bytes += fr(_sec(bf, 'sgst'),            'SGST (2.5%)',     '12.88');
+    bytes += fr(_sec(bf, 'vat'),             'VAT',             '0.00');
+    bytes += gen.hr(ch: '....');
+    final gtSec = _sec(bf, 'grand_total');
+    if (gtSec.visible) {
+      final maxGt = (8 * lineChars / 12 / gtSec.size).floor();
+      if ('Grand Total'.length > maxGt) {
+        bytes += gen.text('Grand Total', styles: LocalPrintConfigService.labelStyleFromSection(gtSec, isPaperSize80: ip80));
+        bytes += gen.text('540.76',      styles: LocalPrintConfigService.valueStyleFromSection(gtSec, isPaperSize80: ip80));
+      } else {
+        bytes += gen.row([
+          PosColumn(text: 'Grand Total', width: 8, styles: LocalPrintConfigService.labelStyleFromSection(gtSec, isPaperSize80: ip80)),
+          PosColumn(text: '540.76',      width: 4, styles: LocalPrintConfigService.valueStyleFromSection(gtSec, isPaperSize80: ip80)),
+        ]);
+      }
+    }
+    bytes += fr(_sec(bf, 'payment_type'), 'Payment', 'Cash');
+    txt(_sec(bf, 'powered_by'), 'Powered by MyGenie');
+    bytes += gen.feed(3);
+    bytes += gen.cut();
+    return bytes;
+  }
 
-    final kotItemSec = _sec(cfg.kotSections, 'k_items');
-    bytes += gen.row([
-      PosColumn(text: 'Item', width: 9, styles: LocalPrintConfigService.stylesFromSectionWithAlign(kotItemSec, PosAlign.left, isPaperSize80: ip80)),
-      PosColumn(text: 'Qty', width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(kotItemSec, PosAlign.right, isPaperSize80: ip80)),
-    ]);
-    bytes += gen.hr(ch: '--');
-    bytes += gen.row([
-      PosColumn(text: 'Sample Item', width: 9, styles: LocalPrintConfigService.stylesFromSectionWithAlign(kotItemSec, PosAlign.left, isPaperSize80: ip80)),
-      PosColumn(text: 'x2', width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(kotItemSec, PosAlign.right, isPaperSize80: ip80)),
-    ]);
+  // ── KOT test ─────────────────────────────────────────────────
+  Future<List<int>> _buildKotBytes(RestaurantPrinterNew printer) async {
+    final paperRoll = printer.printerPaperRoll == 58 ? 58 : 80;
+    final ip80 = paperRoll == 80;
+    final gen = Generator(
+        paperRoll == 58 ? PaperSize.mm58 : PaperSize.mm80,
+        await CapabilityProfile.load());
+    final ks = widget.config.kotSections;
+    List<int> bytes = [];
 
+    List<int> twoCol(BillSectionConfig sec, String left, String right) {
+      if (!sec.visible) return [];
+      return gen.row([
+        PosColumn(text: left,  width: 6, styles: LocalPrintConfigService.stylesFromSectionWithAlign(sec, PosAlign.left,  isPaperSize80: ip80)),
+        PosColumn(text: right, width: 6, styles: LocalPrintConfigService.stylesFromSectionWithAlign(sec, PosAlign.right, isPaperSize80: ip80)),
+      ]);
+    }
+
+    void txt(BillSectionConfig sec, String text) {
+      if (sec.visible)
+        bytes += gen.text(text, styles: LocalPrintConfigService.stylesFromSection(sec, isPaperSize80: ip80));
+    }
+
+    txt(_sec(ks, 'k_station'), 'KITCHEN');
+    txt(_sec(ks, 'k_title'),   'KOT');
+    bytes += gen.hr();
+    bytes += twoCol(_sec(ks, 'k_order_id'),   'Order: #1042', '25-Nov 1:30PM');
+    bytes += twoCol(_sec(ks, 'k_order_type'), 'Dine In',      'Waiter: Ravi');
+    txt(_sec(ks, 'k_customer'), 'Rahul Kumar');
+    txt(_sec(ks, 'k_table'),    'TABLE  T-5');
+    bytes += gen.hr();
+
+    final itemSec = _sec(ks, 'k_items');
+    if (itemSec.visible) {
+      bytes += gen.row([
+        PosColumn(text: 'Item', width: 9, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left,  isPaperSize80: ip80)),
+        PosColumn(text: 'Qty',  width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.right, isPaperSize80: ip80)),
+      ]);
+      bytes += gen.hr(ch: '--');
+      bytes += gen.row([
+        PosColumn(text: 'Paneer Masala', width: 9, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left,  isPaperSize80: ip80)),
+        PosColumn(text: 'x1',            width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.right, isPaperSize80: ip80)),
+      ]);
+      bytes += gen.row([
+        PosColumn(text: 'Butter Naan', width: 9, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left,  isPaperSize80: ip80)),
+        PosColumn(text: 'x2',          width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.right, isPaperSize80: ip80)),
+      ]);
+    }
+    bytes += gen.hr();
+    txt(_sec(ks, 'k_note'), 'Note: Less spicy');
     bytes += gen.feed(3);
     bytes += gen.cut();
     return bytes;
@@ -939,7 +1016,9 @@ class _TestPrintSheetState extends State<_TestPrintSheet> {
   Future<void> _print(int index, RestaurantPrinterNew printer) async {
     setState(() => _printingIndex = index);
     try {
-      final bytes = await _buildBytes(printer);
+      final bytes = _billMode
+          ? await _buildBillBytes(printer)
+          : await _buildKotBytes(printer);
       if (Platform.isIOS) {
         final wifiTarget = NetworkPrinterResolver.kotPrinter(printer);
         final mac = printer.macPrinterIp ?? '';
@@ -989,8 +1068,18 @@ class _TestPrintSheetState extends State<_TestPrintSheet> {
               children: [
                 Icon(Icons.print_outlined, color: ColorTheme.appColor, size: 20),
                 const SizedBox(width: 8),
-                Text('Select printer for test print',
+                Text('Test print',
                     style: montserratSemiBold.copyWith(fontSize: 15)),
+                const Spacer(),
+                _PaperChip(
+                  label: 'Bill', selected: _billMode,
+                  onTap: () => setState(() => _billMode = true),
+                ),
+                const SizedBox(width: 6),
+                _PaperChip(
+                  label: 'KOT', selected: !_billMode,
+                  onTap: () => setState(() => _billMode = false),
+                ),
               ],
             ),
           ),
@@ -1013,8 +1102,7 @@ class _TestPrintSheetState extends State<_TestPrintSheet> {
                 ),
                 trailing: loading
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 20, height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Icon(Icons.chevron_right, color: Colors.grey),
