@@ -1,7 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_esc_pos_utils/flutter_esc_pos_utils.dart';
+import 'package:flutter_pos_printer_platform_image_3/flutter_pos_printer_platform_image_3.dart';
+import 'package:get/get.dart';
+import 'package:mygenie_restaurant/controller/auth_controller.dart';
 import 'package:mygenie_restaurant/data/model/local/bill_layout_config.dart';
+import 'package:mygenie_restaurant/data/model/response/profile_model.dart';
 import 'package:mygenie_restaurant/helper/colors.dart';
 import 'package:mygenie_restaurant/helper/local_print_config_service.dart';
+import 'package:mygenie_restaurant/helper/wifi_printer/ios_print_transport.dart';
+import 'package:mygenie_restaurant/helper/wifi_printer/network_printer_target.dart';
 import 'package:mygenie_restaurant/util/styles.dart';
 import 'package:mygenie_restaurant/view/base/custom_snackbar.dart';
 
@@ -65,6 +73,21 @@ class _BillLayoutScreenState extends State<BillLayoutScreen>
     );
   }
 
+  void _showTestPrint() {
+    final printers = Get.find<AuthController>().profileModel?.restaurantPrinterNew ?? [];
+    if (printers.isEmpty) {
+      showCustomSnackBar('No printers configured', isError: true);
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _TestPrintSheet(config: _config!, printers: printers),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,6 +105,11 @@ class _BillLayoutScreenState extends State<BillLayoutScreen>
           style: montserratSemiBold.copyWith(color: Colors.black, fontSize: 18),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.print_outlined, color: ColorTheme.appColor),
+            tooltip: 'Test Print',
+            onPressed: _config == null ? null : () => _showTestPrint(),
+          ),
           IconButton(
             icon: Icon(Icons.refresh, color: ColorTheme.appColor),
             tooltip: 'Reset to defaults',
@@ -459,6 +487,194 @@ class _IconToggle extends StatelessWidget {
             color: active ? activeColor : Colors.grey,
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Test Print bottom sheet
+// ─────────────────────────────────────────────────────────────
+class _TestPrintSheet extends StatefulWidget {
+  final BillLayoutConfig config;
+  final List<RestaurantPrinterNew> printers;
+  const _TestPrintSheet({required this.config, required this.printers});
+
+  @override
+  State<_TestPrintSheet> createState() => _TestPrintSheetState();
+}
+
+class _TestPrintSheetState extends State<_TestPrintSheet> {
+  int? _printingIndex;
+
+  Future<List<int>> _buildBytes(RestaurantPrinterNew printer) async {
+    final paperRoll = printer.printerPaperRoll == 58 ? 58 : 80;
+    final paperSize = paperRoll == 58 ? PaperSize.mm58 : PaperSize.mm80;
+    final profile = await CapabilityProfile.load();
+    final gen = Generator(paperSize, profile);
+    final cfg = widget.config;
+    final ip80 = paperRoll == 80;
+    List<int> bytes = [];
+
+    BillSectionConfig _sec(List<BillSectionConfig> list, String id) =>
+        list.firstWhere((s) => s.id == id,
+            orElse: () => BillSectionConfig(id: id, label: id));
+
+    final restaurantName = Get.find<AuthController>()
+            .profileModel
+            ?.restaurants
+            ?.firstOrNull
+            ?.name ??
+        'Restaurant';
+
+    // ── Bill test ──────────────────────────────────────────────
+    final nameSec = _sec(cfg.billHeader, 'restaurant_name');
+    bytes += gen.text(restaurantName,
+        styles: LocalPrintConfigService.stylesFromSection(nameSec, isPaperSize80: ip80));
+    bytes += gen.hr();
+    bytes += gen.text('-- BILL LAYOUT TEST --',
+        styles: const PosStyles(align: PosAlign.center));
+    bytes += gen.hr();
+
+    final itemSec = _sec(cfg.billHeader, 'bill_items');
+    bytes += gen.row([
+      PosColumn(text: 'Item', width: 7, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left, isPaperSize80: ip80)),
+      PosColumn(text: 'Qty', width: 2, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left, isPaperSize80: ip80)),
+      PosColumn(text: 'Price', width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.right, isPaperSize80: ip80)),
+    ]);
+    bytes += gen.hr(ch: '--');
+    bytes += gen.row([
+      PosColumn(text: 'Sample Item', width: 7, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left, isPaperSize80: ip80)),
+      PosColumn(text: '2', width: 2, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.left, isPaperSize80: ip80)),
+      PosColumn(text: '240.00', width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(itemSec, PosAlign.right, isPaperSize80: ip80)),
+    ]);
+    bytes += gen.hr();
+
+    final gtSec = _sec(cfg.billFooter, 'grand_total');
+    bytes += gen.row([
+      PosColumn(text: 'Grand Total', width: 8, styles: LocalPrintConfigService.labelStyleFromSection(gtSec, isPaperSize80: ip80)),
+      PosColumn(text: '480.00', width: 4, styles: LocalPrintConfigService.valueStyleFromSection(gtSec, isPaperSize80: ip80)),
+    ]);
+
+    final pbSec = _sec(cfg.billFooter, 'powered_by');
+    bytes += gen.text('Powered by MyGenie',
+        styles: LocalPrintConfigService.stylesFromSection(pbSec, isPaperSize80: ip80));
+
+    // ── KOT test ───────────────────────────────────────────────
+    bytes += gen.feed(1);
+    bytes += gen.hr();
+    bytes += gen.text('-- KOT LAYOUT TEST --',
+        styles: const PosStyles(align: PosAlign.center));
+    bytes += gen.hr();
+
+    final kotTitleSec = _sec(cfg.kotSections, 'k_title');
+    bytes += gen.text('KOT - KITCHEN',
+        styles: LocalPrintConfigService.stylesFromSection(kotTitleSec, isPaperSize80: ip80));
+
+    final kotItemSec = _sec(cfg.kotSections, 'k_items');
+    bytes += gen.row([
+      PosColumn(text: 'Item', width: 9, styles: LocalPrintConfigService.stylesFromSectionWithAlign(kotItemSec, PosAlign.left, isPaperSize80: ip80)),
+      PosColumn(text: 'Qty', width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(kotItemSec, PosAlign.right, isPaperSize80: ip80)),
+    ]);
+    bytes += gen.hr(ch: '--');
+    bytes += gen.row([
+      PosColumn(text: 'Sample Item', width: 9, styles: LocalPrintConfigService.stylesFromSectionWithAlign(kotItemSec, PosAlign.left, isPaperSize80: ip80)),
+      PosColumn(text: 'x2', width: 3, styles: LocalPrintConfigService.stylesFromSectionWithAlign(kotItemSec, PosAlign.right, isPaperSize80: ip80)),
+    ]);
+
+    bytes += gen.feed(3);
+    bytes += gen.cut();
+    return bytes;
+  }
+
+  Future<void> _print(int index, RestaurantPrinterNew printer) async {
+    setState(() => _printingIndex = index);
+    try {
+      final bytes = await _buildBytes(printer);
+      if (Platform.isIOS) {
+        final wifiTarget = NetworkPrinterResolver.kotPrinter(printer);
+        final mac = printer.macPrinterIp ?? '';
+        final ok = await IosPrintTransport.connect(
+            wifiPrinter: wifiTarget, macPrinterAddress: mac);
+        if (ok) {
+          await IosPrintTransport.writeBytes(bytes);
+          await Future.delayed(const Duration(seconds: 2));
+          await IosPrintTransport.disconnect;
+          showCustomSnackBar('Test print sent', isError: false);
+        } else {
+          showCustomSnackBar('Could not connect to printer', isError: true);
+        }
+      } else {
+        // Android — Bluetooth
+        final mgr = PrinterManager.instance;
+        await mgr.connect(
+          type: PrinterType.bluetooth,
+          model: BluetoothPrinterInput(
+            name: printer.printerName ?? '',
+            address: printer.printerIp ?? '',
+            isBle: false,
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 500));
+        await mgr.send(type: PrinterType.bluetooth, bytes: bytes);
+        await Future.delayed(const Duration(seconds: 2));
+        await PrinterManager.instance.disconnect(type: PrinterType.bluetooth);
+        showCustomSnackBar('Test print sent', isError: false);
+      }
+    } catch (e) {
+      showCustomSnackBar('Print error: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _printingIndex = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Icon(Icons.print_outlined, color: ColorTheme.appColor, size: 20),
+                const SizedBox(width: 8),
+                Text('Select printer for test print',
+                    style: montserratSemiBold.copyWith(fontSize: 15)),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: widget.printers.length,
+            separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
+            itemBuilder: (_, i) {
+              final p = widget.printers[i];
+              final loading = _printingIndex == i;
+              return ListTile(
+                leading: Icon(Icons.print, color: ColorTheme.appColor),
+                title: Text(p.printerName ?? 'Printer ${i + 1}',
+                    style: montserratMedium.copyWith(fontSize: 14)),
+                subtitle: Text(
+                  '${p.areaName ?? ''} • ${p.printerPaperRoll ?? 80}mm',
+                  style: montserratRegular.copyWith(fontSize: 12, color: Colors.grey),
+                ),
+                trailing: loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.chevron_right, color: Colors.grey),
+                onTap: loading ? null : () => _print(i, p),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
