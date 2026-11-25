@@ -116,7 +116,8 @@ class PrintByteConvert {
     bytes += generator.setGlobalCodeTable('CP1252');
 
     //////////////  Restaurant Detail ///////////////4
-    if (logoHelper.logoUrlPrint != null &&
+    if (_isVisible('logo') &&
+            logoHelper.logoUrlPrint != null &&
             printType != 'kot' &&
             printType != 'swiggy_kot' &&
             printType != 'station_kot'
@@ -177,99 +178,78 @@ class PrintByteConvert {
 
     ///////////////////  Order Detail /////////////////////
 
-    bytes += generator.row([
-      PosColumn(
-          text: printType == 'bill' ||
-                  printType == 'paid_bill' ||
-                  printType == 'billing' ||
-                  printType == 'swiggy_bill'
-              ? 'Bill No : $orderId'
-              : 'Order Id : $orderId',
-          width: 6,
-          styles: styleFunction(
-              align: PosAlign.left,
-              name: printConfig.resturantOrderId ?? '',
-              isPaperSize80: paperRoll == 80)),
-      PosColumn(
-          text: '$date',
-          width: 6,
-          styles: styleFunction(
-              align: PosAlign.right,
-              name: printConfig.dateTime ?? '',
-              isPaperSize80: paperRoll == 80)),
-    ]);
+    final _orderIdSec = _id('order_id', 'k_order_id');
+    final _dateSec    = _id('date_time', 'k_date');
+    final _typeSec    = _id('order_type', 'k_order_type');
+    final _waiterSec  = _id('waiter_name', 'k_waiter');
+    final _custSec    = _id('customer_name', 'k_customer');
+    final _tableSec   = _id('table_number', 'k_table');
+    if (_isVisible(_orderIdSec) || _isVisible(_dateSec))
+      bytes += generator.row([
+        PosColumn(
+            text: _isVisible(_orderIdSec)
+                ? (printType == 'bill' || printType == 'paid_bill' || printType == 'billing' || printType == 'swiggy_bill'
+                    ? 'Bill No : $orderId'
+                    : 'Order Id : $orderId')
+                : '',
+            width: 6,
+            styles: _localStyle(_orderIdSec,
+                serverFallback: printConfig.resturantOrderId ?? '',
+                fallbackAlign: PosAlign.left)),
+        PosColumn(
+            text: _isVisible(_dateSec) ? '$date' : '',
+            width: 6,
+            styles: _localStyle(_dateSec,
+                serverFallback: printConfig.dateTime ?? '',
+                fallbackAlign: PosAlign.right)),
+      ]);
     if (orderType != 'delivery' &&
         orderType != 'take_away' &&
         printType != 'swiggy_kot' &&
-        printType != 'swiggy_bill')
+        printType != 'swiggy_bill' &&
+        (_isVisible(_typeSec) || _isVisible(_waiterSec)))
       bytes += generator.row([
         PosColumn(
-            text: 'Dine In',
+            text: _isVisible(_typeSec) ? 'Dine In' : '',
             width: 5,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.orderType ?? '',
-                isPaperSize80: paperRoll == 80)),
+            styles: _localStyle(_typeSec,
+                serverFallback: printConfig.orderType ?? '',
+                fallbackAlign: PosAlign.left)),
+        PosColumn(text: '', width: 1, styles: PosStyles(align: PosAlign.center)),
         PosColumn(
-          text: '',
-          width: 1,
-          styles: PosStyles(align: PosAlign.center),
-        ),
-        PosColumn(
-            text: '$waiterName',
+            text: _isVisible(_waiterSec) ? '$waiterName' : '',
             width: 6,
-            styles: styleFunction(
-                align: PosAlign.right,
-                name: printConfig.billerName ?? '',
-                isPaperSize80: paperRoll == 80)),
+            styles: _localStyle(_waiterSec,
+                serverFallback: printConfig.billerName ?? '',
+                fallbackAlign: PosAlign.right)),
       ]);
-
-    bytes += generator.row([
-      PosColumn(
-          text: '$custName',
-          width: 5,
-          styles: styleFunction(
-              align: PosAlign.left,
-              name: printConfig.customerName ?? '',
-              isPaperSize80: paperRoll == 80)),
-      PosColumn(
-        text: '',
-        width: 2,
-        styles: PosStyles(align: PosAlign.center, underline: true),
-      ),
-      PosColumn(
-          text: '$custPhone',
-          width: 5,
-          styles: styleFunction(
-              align: PosAlign.right,
-              name: printConfig.resturantOrderId,
-              isPaperSize80: paperRoll == 80)),
-    ]);
-    bytes += generator.row([
-      PosColumn(
-        text: '',
-        width: 2,
-        styles: PosStyles(
-          align: PosAlign.center,
-          // fontType: PosFontType.fontB,
-        ),
-      ),
-      PosColumn(
-          text: '$tablename',
-          width: 8,
-          styles: styleFunction(
-              align: PosAlign.center,
-              name: printConfig.resturantTable ?? '',
-              isPaperSize80: paperRoll == 80)),
-      PosColumn(
-        text: '',
-        width: 2,
-        styles: PosStyles(
-          align: PosAlign.center,
-          fontType: PosFontType.fontB,
-        ),
-      ),
-    ]);
+    if (_isVisible(_custSec) || _isVisible('customer_phone'))
+      bytes += generator.row([
+        PosColumn(
+            text: _isVisible(_custSec) ? '$custName' : '',
+            width: 5,
+            styles: _localStyle(_custSec,
+                serverFallback: printConfig.customerName ?? '',
+                fallbackAlign: PosAlign.left)),
+        PosColumn(text: '', width: 2, styles: PosStyles(align: PosAlign.center, underline: true)),
+        PosColumn(
+            text: _isVisible('customer_phone') ? '$custPhone' : '',
+            width: 5,
+            styles: _localStyle('customer_phone',
+                serverFallback: printConfig.resturantOrderId,
+                fallbackAlign: PosAlign.right)),
+      ]);
+    if (_isVisible(_tableSec))
+      bytes += generator.row([
+        PosColumn(text: '', width: 2, styles: PosStyles(align: PosAlign.center)),
+        PosColumn(
+            text: '$tablename',
+            width: 8,
+            styles: _localStyle(_tableSec,
+                serverFallback: printConfig.resturantTable ?? '',
+                fallbackAlign: PosAlign.center)),
+        PosColumn(text: '', width: 2, styles: PosStyles(align: PosAlign.center, fontType: PosFontType.fontB)),
+      ]);
     bytes += generator.hr(ch: '--');
 
 ////////////////////////      food  detail    ////////////////////
@@ -467,25 +447,19 @@ class PrintByteConvert {
         PosColumn(
             text: 'sl'.tr.toUpperCase(),
             width: 2,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.resturantFoodListHeader!,
-                isPaperSize80: paperRoll == 80)),
+            styles: _itemStyle('k_items', PosAlign.left,
+                serverFallback: printConfig.resturantFoodListHeader!)),
         PosColumn(
           text: 'item_info'.tr,
           width: 8,
-          styles: styleFunction(
-              align: PosAlign.center,
-              name: printConfig.resturantFoodListHeader!,
-              isPaperSize80: paperRoll == 80),
+          styles: _itemStyle('k_items', PosAlign.center,
+              serverFallback: printConfig.resturantFoodListHeader!),
         ),
         PosColumn(
           text: 'qty'.tr,
           width: 2,
-          styles: styleFunction(
-              align: PosAlign.center,
-              name: printConfig.resturantFoodListHeader!,
-              isPaperSize80: paperRoll == 80),
+          styles: _itemStyle('k_items', PosAlign.center,
+              serverFallback: printConfig.resturantFoodListHeader!),
         ),
       ]);
       bytes += generator.hr(ch: '--');
@@ -540,32 +514,26 @@ class PrintByteConvert {
           PosColumn(
               text: '${i + 1}.',
               width: 2,
-              styles: styleFunction(
-                  isUnderline: cart.foodStatus == 3,
-                  align: PosAlign.left,
-                  name: printConfig.restaurantFoodList!,
-                  isPaperSize80: paperRoll == 80)),
+              styles: _itemStyle('k_items', PosAlign.left,
+                  serverFallback: printConfig.restaurantFoodList!,
+                  isUnderline: cart.foodStatus == 3)),
           PosColumn(
             text: profileModel.restaurants!.first.foodWithVariance == 'Yes'
                 ? '${cart.foodDetails!.name} $variationText'
                 : '${cart.foodDetails!.name}',
             width: 8,
-            styles: styleFunction(
-                isUnderline: cart.foodStatus == 3,
-                align: PosAlign.left,
-                name: printConfig.restaurantFoodList!,
-                isPaperSize80: paperRoll == 80),
+            styles: _itemStyle('k_items', PosAlign.left,
+                serverFallback: printConfig.restaurantFoodList!,
+                isUnderline: cart.foodStatus == 3),
           ),
           PosColumn(
-            text: 
+            text:
             // '${cart.quantity}',
             formatQuantity(cart.quantity),
             width: 2,
-            styles: styleFunction(
-                isUnderline: cart.foodStatus == 3,
-                align: PosAlign.left,
-                name: printConfig.restaurantFoodList!,
-                isPaperSize80: paperRoll == 80),
+            styles: _itemStyle('k_items', PosAlign.left,
+                serverFallback: printConfig.restaurantFoodList!,
+                isUnderline: cart.foodStatus == 3),
           ),
         ]);
 
@@ -669,25 +637,19 @@ class PrintByteConvert {
         PosColumn(
             text: 'sl'.tr.toUpperCase(),
             width: 2,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.resturantFoodListHeader!,
-                isPaperSize80: paperRoll == 80)),
+            styles: _itemStyle('k_items', PosAlign.left,
+                serverFallback: printConfig.resturantFoodListHeader!)),
         PosColumn(
           text: 'item_info'.tr,
           width: 8,
-          styles: styleFunction(
-              align: PosAlign.center,
-              name: printConfig.resturantFoodListHeader!,
-              isPaperSize80: paperRoll == 80),
+          styles: _itemStyle('k_items', PosAlign.center,
+              serverFallback: printConfig.resturantFoodListHeader!),
         ),
         PosColumn(
           text: 'qty'.tr,
           width: 2,
-          styles: styleFunction(
-              align: PosAlign.center,
-              name: printConfig.resturantFoodListHeader!,
-              isPaperSize80: paperRoll == 80),
+          styles: _itemStyle('k_items', PosAlign.center,
+              serverFallback: printConfig.resturantFoodListHeader!),
         ),
       ]);
       bytes += generator.hr(ch: '--');
@@ -770,32 +732,26 @@ class PrintByteConvert {
           PosColumn(
               text: '${i + 1}.',
               width: 2,
-              styles: styleFunction(
-                  isUnderline: printTitle == 'Cancel KOT',
-                  align: PosAlign.left,
-                  name: printConfig.restaurantFoodList ?? '',
-                  isPaperSize80: paperRoll == 80)),
+              styles: _itemStyle('k_items', PosAlign.left,
+                  serverFallback: printConfig.restaurantFoodList ?? '',
+                  isUnderline: printTitle == 'Cancel KOT')),
           PosColumn(
             text: profileModel.restaurants?.first.foodWithVariance == 'Yes'
                 ? '${cart.title} $variationText'
                 : '${cart.title}',
             width: 8,
-            styles: styleFunction(
-                isUnderline: printTitle == 'Cancel KOT',
-                align: PosAlign.left,
-                name: printConfig.restaurantFoodList ?? '',
-                isPaperSize80: paperRoll == 80),
+            styles: _itemStyle('k_items', PosAlign.left,
+                serverFallback: printConfig.restaurantFoodList ?? '',
+                isUnderline: printTitle == 'Cancel KOT'),
           ),
           PosColumn(
-            text: 
+            text:
             // '${cart.quantity}',
             formatQuantity(cart.quantity),
             width: 2,
-            styles: styleFunction(
-                isUnderline: printTitle == 'Cancel KOT',
-                align: PosAlign.left,
-                name: printConfig.restaurantFoodList ?? '',
-                isPaperSize80: paperRoll == 80),
+            styles: _itemStyle('k_items', PosAlign.left,
+                serverFallback: printConfig.restaurantFoodList ?? '',
+                isUnderline: printTitle == 'Cancel KOT'),
           ),
         ]);
 
@@ -870,6 +826,13 @@ class PrintByteConvert {
         bytes += generator.hr(ch: '....');
       }
     }
+    // Order note at bottom of any KOT type, if visible in layout config.
+    if (_isKot() && orderNote != '' && _isVisible('k_note'))
+      bytes += generator.text(
+        'Note: $orderNote',
+        styles: _localStyle('k_note',
+            serverFallback: '', fallbackAlign: PosAlign.left),
+      );
 /////////////////////         BILL        /////////////////////
     if (printType == 'bill') {
       bytes += generator.row([
@@ -2098,6 +2061,11 @@ class PrintByteConvert {
           ? LocalPrintConfigService.valueStyleFromSection(sec, isPaperSize80: paperRoll == 80)
           : styleFunction(align: PosAlign.right, name: serverFallback ?? '', isPaperSize80: paperRoll == 80);
     }
+    // Returns true when the current print is any KOT type.
+    bool _isKot() => printType == 'kot' || printType == 'swiggy_kot' || printType == 'station_kot';
+    // Picks the KOT section id when printing a KOT, otherwise the bill section id.
+    String _id(String billId, String kotId) => _isKot() ? kotId : billId;
+
     // For item/qty rows: section's size+bold, caller's per-column alignment.
     PosStyles _itemStyle(String sectionId, PosAlign align,
         {String? serverFallback, bool isUnderline = false}) {
@@ -2442,11 +2410,13 @@ class PrintByteConvert {
         );
       }
     }
-    bytes += generator.text(
-      'Powered by MyGenie',
-      styles: styleFunction(
-          name: printConfig.poweredByMygenie, isPaperSize80: paperRoll == 80),
-    );
+    if (_isVisible('powered_by'))
+      bytes += generator.text(
+        'Powered by MyGenie',
+        styles: _localStyle('powered_by',
+            serverFallback: printConfig.poweredByMygenie,
+            fallbackAlign: PosAlign.center),
+      );
     bytes += generator.cut();
     bytes += generator.beep(n: 3, duration: PosBeepDuration.beep200ms);
 
