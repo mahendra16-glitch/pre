@@ -2644,6 +2644,26 @@ class _OrderManagementScreenState extends State<OrderManagementScreen>
               ),
             ),
           ),
+          const Divider(indent: 15, endIndent: 15, height: 20),
+          InkWell(
+            onTap: () async {
+              FocusManager.instance.primaryFocus?.unfocus();
+              scaffoldKey.currentState?.closeDrawer();
+              await Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => const BillLayoutScreen()));
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(left: 15, bottom: 12),
+              child: Row(children: [
+                Icon(Icons.print_outlined, size: 18, color: ColorTheme.appColor),
+                const SizedBox(width: 8),
+                Text('Bill / KOT Layout',
+                    style: poppinsMedium.copyWith(
+                        fontSize: 13, color: ColorTheme.appColor)),
+              ]),
+            ),
+          ),
+          const Divider(indent: 15, endIndent: 15, height: 4),
           if (Get.find<AuthController>().profileModel!.role!.contains('bill') &&
               Get.find<AuthController>()
                       .profileModel!
