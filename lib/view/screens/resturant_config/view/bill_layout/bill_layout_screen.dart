@@ -310,17 +310,18 @@ class _SectionRowState extends State<_SectionRow> {
                 },
               ),
               const SizedBox(width: 4),
-              // Visible toggle
-              _IconToggle(
-                icon: s.visible ? Icons.visibility : Icons.visibility_off,
-                active: s.visible,
-                activeColor: ColorTheme.green,
-                tooltip: s.visible ? 'Hide' : 'Show',
-                onTap: () {
-                  setState(() => s.visible = !s.visible);
-                  widget.onChanged();
-                },
-              ),
+              // Visible toggle — hidden for sections that must always print
+              if (s.id != 'powered_by')
+                _IconToggle(
+                  icon: s.visible ? Icons.visibility : Icons.visibility_off,
+                  active: s.visible,
+                  activeColor: ColorTheme.green,
+                  tooltip: s.visible ? 'Hide' : 'Show',
+                  onTap: () {
+                    setState(() => s.visible = !s.visible);
+                    widget.onChanged();
+                  },
+                ),
             ],
           ),
         ),

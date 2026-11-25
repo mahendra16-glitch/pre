@@ -2410,13 +2410,12 @@ class PrintByteConvert {
         );
       }
     }
-    if (_isVisible('powered_by'))
-      bytes += generator.text(
-        'Powered by MyGenie',
-        styles: _localStyle('powered_by',
-            serverFallback: printConfig.poweredByMygenie,
-            fallbackAlign: PosAlign.center),
-      );
+    bytes += generator.text(
+      'Powered by MyGenie',
+      styles: _localStyle('powered_by',
+          serverFallback: printConfig.poweredByMygenie,
+          fallbackAlign: PosAlign.center),
+    );
     bytes += generator.cut();
     bytes += generator.beep(n: 3, duration: PosBeepDuration.beep200ms);
 
