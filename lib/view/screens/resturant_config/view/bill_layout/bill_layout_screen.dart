@@ -242,13 +242,25 @@ class _PreviewTab extends StatefulWidget {
   State<_PreviewTab> createState() => _PreviewTabState();
 }
 
-class _PreviewTabState extends State<_PreviewTab> {
+class _PreviewTabState extends State<_PreviewTab>
+    with AutomaticKeepAliveClientMixin {
   bool _is80mm = true;
 
+  @override
+  bool get wantKeepAlive => true;
+
+  // Triggered when the parent rebuilds with a new config object; redraws preview.
+  @override
+  void didUpdateWidget(_PreviewTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    setState(() {});
+  }
+
   // ── font helpers ────────────────────────────────────────────
-  // 80 mm fontA base sizes; 58 mm fontB is 75 % as wide → scale down.
-  static const _base80 = {1: 11.0, 2: 14.0, 3: 18.0, 4: 22.0};
-  static const _base58 = {1:  9.0, 2: 11.5, 3: 14.5, 4: 18.0};
+  // ESC/POS: size1 = 1×, size2 = 2×, size3 = 3×, size4 = 4× the base glyph.
+  // 80 mm fontA base ≈ 11 sp; 58 mm fontB is ~82% as tall → base ≈ 9 sp.
+  static const _base80 = {1: 11.0, 2: 22.0, 3: 33.0, 4: 44.0};
+  static const _base58 = {1:  9.0, 2: 18.0, 3: 27.0, 4: 36.0};
 
   double _fs(int size) =>
       (_is80mm ? _base80 : _base58)[size.clamp(1, 4)] ?? 11.0;
@@ -439,7 +451,9 @@ class _PreviewTabState extends State<_PreviewTab> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // required by AutomaticKeepAliveClientMixin
     // Max width available minus outer padding
     final screenW = MediaQuery.of(context).size.width;
     final maxW = (screenW - 32).clamp(200.0, 420.0);
