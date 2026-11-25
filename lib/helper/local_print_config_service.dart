@@ -49,6 +49,24 @@ class LocalPrintConfigService {
     );
   }
 
+  // For item/qty rows: applies section's size+bold but uses the caller's align per column.
+  static PosStyles stylesFromSectionWithAlign(
+    BillSectionConfig section,
+    PosAlign align, {
+    bool isPaperSize80 = true,
+    bool isUnderline = false,
+  }) {
+    final sz = _posSize(section.size);
+    return PosStyles(
+      align: align,
+      underline: isUnderline,
+      fontType: isPaperSize80 ? PosFontType.fontA : PosFontType.fontB,
+      bold: section.bold,
+      height: sz,
+      width: sz,
+    );
+  }
+
   // For label-value rows: label always left, value always right; size+bold from section.
   static PosStyles labelStyleFromSection(BillSectionConfig section, {bool isPaperSize80 = true}) {
     final sz = _posSize(section.size);

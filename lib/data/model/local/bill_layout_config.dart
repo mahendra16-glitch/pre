@@ -78,6 +78,7 @@ class BillLayoutConfig {
           BillSectionConfig(id: 'customer_name', label: 'Customer name', visible: true, size: 1, align: 'L', bold: false),
           BillSectionConfig(id: 'customer_phone', label: 'Customer phone', visible: true, size: 1, align: 'R', bold: false),
           BillSectionConfig(id: 'table_number', label: 'Table number', visible: true, size: 3, align: 'C', bold: true),
+          BillSectionConfig(id: 'bill_items', label: 'Item + qty list', visible: true, size: 1, align: 'L', bold: false),
         ],
         billFooter: [
           BillSectionConfig(id: 'item_total', label: 'Item total', visible: true, size: 1, align: 'L', bold: false),

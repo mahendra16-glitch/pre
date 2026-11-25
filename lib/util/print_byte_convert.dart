@@ -279,25 +279,19 @@ class PrintByteConvert {
         PosColumn(
             text: 'sl'.tr.toUpperCase(),
             width: 2,
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.resturantFoodListHeader ?? '',
-                isPaperSize80: paperRoll == 80)),
+            styles: _itemStyle('k_items', PosAlign.left,
+                serverFallback: printConfig.resturantFoodListHeader ?? '')),
         PosColumn(
           text: 'item_info'.tr,
           width: 8,
-          styles: styleFunction(
-              align: PosAlign.center,
-              name: printConfig.resturantFoodListHeader ?? '',
-              isPaperSize80: paperRoll == 80),
+          styles: _itemStyle('k_items', PosAlign.center,
+              serverFallback: printConfig.resturantFoodListHeader ?? ''),
         ),
         PosColumn(
           text: 'qty'.tr,
           width: 2,
-          styles: styleFunction(
-              align: PosAlign.center,
-              name: printConfig.resturantFoodListHeader ?? '',
-              isPaperSize80: paperRoll == 80),
+          styles: _itemStyle('k_items', PosAlign.center,
+              serverFallback: printConfig.resturantFoodListHeader ?? ''),
         ),
       ]);
       bytes += generator.hr(ch: '--');
@@ -351,32 +345,26 @@ class PrintByteConvert {
           PosColumn(
               text: '${i + 1}.',
               width: 2,
-              styles: styleFunction(
-                  isUnderline: cart.foodStatus == 3,
-                  align: PosAlign.left,
-                  name: printConfig.restaurantFoodList ?? '',
-                  isPaperSize80: paperRoll == 80)),
+              styles: _itemStyle('k_items', PosAlign.left,
+                  serverFallback: printConfig.restaurantFoodList ?? '',
+                  isUnderline: cart.foodStatus == 3)),
           PosColumn(
             text: profileModel.restaurants?.first.foodWithVariance == 'Yes'
                 ? '${cart.foodDetails?.name ?? ''} $variationText'
                 : '${cart.foodDetails?.name ?? ''}',
             width: 8,
-            styles: styleFunction(
-                isUnderline: cart.foodStatus == 3,
-                align: PosAlign.left,
-                name: printConfig.restaurantFoodList ?? '',
-                isPaperSize80: paperRoll == 80),
+            styles: _itemStyle('k_items', PosAlign.left,
+                serverFallback: printConfig.restaurantFoodList ?? '',
+                isUnderline: cart.foodStatus == 3),
           ),
           PosColumn(
-            text: 
+            text:
             // '${cart.quantity}',
             formatQuantity(cart.quantity),
             width: 2,
-            styles: styleFunction(
-                isUnderline: cart.foodStatus == 3,
-                align: PosAlign.left,
-                name: printConfig.restaurantFoodList ?? '',
-                isPaperSize80: paperRoll == 80),
+            styles: _itemStyle('k_items', PosAlign.left,
+                serverFallback: printConfig.restaurantFoodList ?? '',
+                isUnderline: cart.foodStatus == 3),
           ),
         ]);
 
@@ -900,43 +888,33 @@ class PrintByteConvert {
                 isHideSl: true,
                 isShowDate: isShowDate,
                 printerSize80mm: paperRoll == 80),
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.resturantFoodListHeader!,
-                isPaperSize80: paperRoll == 80)),
+            styles: _itemStyle('bill_items', PosAlign.left,
+                serverFallback: printConfig.resturantFoodListHeader!)),
         PosColumn(
             text: 'qty'.tr,
             width: getOrderTypeValue('qty',
                 isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.resturantFoodListHeader!,
-                isPaperSize80: paperRoll == 80)),
+            styles: _itemStyle('bill_items', PosAlign.left,
+                serverFallback: printConfig.resturantFoodListHeader!)),
         PosColumn(
             text: 'Price',
             width: getOrderTypeValue('price',
                 isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.resturantFoodListHeader!,
-                isPaperSize80: paperRoll == 80)),
+            styles: _itemStyle('bill_items', PosAlign.left,
+                serverFallback: printConfig.resturantFoodListHeader!)),
         PosColumn(
             text: 'Total',
             width: getOrderTypeValue('total',
                 isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
-            styles: styleFunction(
-                align: PosAlign.left,
-                name: printConfig.resturantFoodListHeader!,
-                isPaperSize80: paperRoll == 80)),
+            styles: _itemStyle('bill_items', PosAlign.left,
+                serverFallback: printConfig.resturantFoodListHeader!)),
         if (isShowDate && paperRoll == 80)
           PosColumn(
               text: 'Date',
               width: getOrderTypeValue('date',
                   isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
-              styles: styleFunction(
-                  align: PosAlign.left,
-                  name: printConfig.resturantFoodListHeader!,
-                  isPaperSize80: paperRoll == 80)),
+              styles: _itemStyle('bill_items', PosAlign.left,
+                  serverFallback: printConfig.resturantFoodListHeader!)),
       ]);
       bytes += generator.hr(ch: '--');
 
@@ -1036,22 +1014,18 @@ class PrintByteConvert {
                     isShowDate: isShowDate,
                     isHideSl: true,
                     printerSize80mm: paperRoll == 80),
-                styles: styleFunction(
-                    isUnderline: food.foodStatus == 3,
-                    align: PosAlign.left,
-                    name: printConfig.restaurantFoodList!,
-                    isPaperSize80: paperRoll == 80)),
+                styles: _itemStyle('bill_items', PosAlign.left,
+                    serverFallback: printConfig.restaurantFoodList!,
+                    isUnderline: food.foodStatus == 3)),
             PosColumn(
-                text: 
+                text:
                 // '${food.quantity}',
                 formatQuantity(food.quantity),
                 width: getOrderTypeValue('qty',
                     isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
-                styles: styleFunction(
-                    align: PosAlign.left,
-                    isUnderline: food.foodStatus == 3,
-                    name: printConfig.restaurantFoodList!,
-                    isPaperSize80: paperRoll == 80)),
+                styles: _itemStyle('bill_items', PosAlign.left,
+                    serverFallback: printConfig.restaurantFoodList!,
+                    isUnderline: food.foodStatus == 3)),
             PosColumn(
                 text: food.isComplementary != null && food.isComplementary!
                     ? '0'
@@ -1062,11 +1036,9 @@ class PrintByteConvert {
                 // '${(food.unitPrice * food.quantity) + (variationTotal) + (addonsTotal)}',
                 width: getOrderTypeValue('price',
                     isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
-                styles: styleFunction(
-                    isUnderline: food.foodStatus == 3,
-                    align: PosAlign.left,
-                    name: printConfig.restaurantFoodList!,
-                    isPaperSize80: paperRoll == 80)),
+                styles: _itemStyle('bill_items', PosAlign.left,
+                    serverFallback: printConfig.restaurantFoodList!,
+                    isUnderline: food.foodStatus == 3)),
             PosColumn(
                 text: food.isComplementary != null && food.isComplementary!
                     ? '0'
@@ -1077,22 +1049,18 @@ class PrintByteConvert {
                 // '${(food.unitPrice * food.quantity) + (variationTotal) + (addonsTotal)}',
                 width: getOrderTypeValue('total',
                     isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
-                styles: styleFunction(
-                    align: PosAlign.right,
-                    isUnderline: food.foodStatus == 3,
-                    name: printConfig.restaurantFoodList!,
-                    isPaperSize80: paperRoll == 80)),
+                styles: _itemStyle('bill_items', PosAlign.right,
+                    serverFallback: printConfig.restaurantFoodList!,
+                    isUnderline: food.foodStatus == 3)),
             if (isShowDate && paperRoll == 80)
               PosColumn(
                   text:
                       '${DateFormat('dd-MMM').format(DateTime.parse(food.createdAt!))}',
                   width: getOrderTypeValue('date',
                       isShowDate: isShowDate, printerSize80mm: paperRoll == 80),
-                  styles: styleFunction(
-                      align: PosAlign.right,
-                      isUnderline: food.foodStatus == 3,
-                      name: printConfig.restaurantFoodList!,
-                      isPaperSize80: paperRoll == 80)),
+                  styles: _itemStyle('bill_items', PosAlign.right,
+                      serverFallback: printConfig.restaurantFoodList!,
+                      isUnderline: food.foodStatus == 3)),
           ]);
         if (food.foodStatus != 3 && addons != '' && addonsTotal != 0) {
           // bytes += generator.hr(ch: '....');
@@ -2130,6 +2098,20 @@ class PrintByteConvert {
           ? LocalPrintConfigService.valueStyleFromSection(sec, isPaperSize80: paperRoll == 80)
           : styleFunction(align: PosAlign.right, name: serverFallback ?? '', isPaperSize80: paperRoll == 80);
     }
+    // For item/qty rows: section's size+bold, caller's per-column alignment.
+    PosStyles _itemStyle(String sectionId, PosAlign align,
+        {String? serverFallback, bool isUnderline = false}) {
+      final sec = _localSection(sectionId);
+      return sec != null
+          ? LocalPrintConfigService.stylesFromSectionWithAlign(sec, align,
+              isPaperSize80: paperRoll == 80, isUnderline: isUnderline)
+          : styleFunction(
+              align: align,
+              name: serverFallback ?? '',
+              isPaperSize80: paperRoll == 80,
+              isUnderline: isUnderline);
+    }
+
     List<int> _footerRow(String sectionId, String label, String value,
         {String? serverFallback}) =>
         generator.row([
